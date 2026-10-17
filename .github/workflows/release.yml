@@ -27,7 +27,7 @@ jobs:
         run: gh release create "$GITHUB_REF_NAME" dist-bin/* --title "$GITHUB_REF_NAME" --generate-notes
 
   # Publishes to npm via trusted publishing (OIDC, no token). Enabled by setting the repo variable NPM_PUBLISH=true
-  # after the one-time setup described in the README ("Publish to npm").
+  # after the one-time setup described in docs/releasing.md ("Publish to npm").
   npm:
     needs: release
     if: ${{ vars.NPM_PUBLISH == 'true' }}
