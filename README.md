@@ -76,7 +76,8 @@ To stop dwio at any time, press `Ctrl+C`.
 ## Guides
 
 - [Export a picture](docs/export.md): make a PNG, SVG, PDF, or `.drawio.svg` from a diagram.
-- [Use dwio with AI agents](docs/agents.md): let Claude Code and other agents read and edit your diagrams. It also shows how to add cloud and brand icons with the official draw.io MCP.
+- [Use dwio with AI agents](docs/agents.md): let Claude Code, Codex, and other agents read and edit your diagrams. It also shows how to add cloud and brand icons with the official draw.io MCP.
+- [Add dwio to your agent](docs/agent-setup.md): MCP setup for Claude Code, Codex, and opencode.
 - [Use dwio from another computer](docs/remote-access.md): `--host`, tunnels, and the "bad host" error.
 - [Reference](docs/reference.md): options, upgrade, and the cache folder.
 - [Troubleshooting](docs/troubleshooting.md)

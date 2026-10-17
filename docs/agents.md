@@ -1,23 +1,8 @@
 # Use dwio with AI agents
 
-dwio can run as an [MCP](https://modelcontextprotocol.io) server. An agent such as Claude Code or opencode can then read, draw, and edit your diagrams. If you have the diagram open in the dwio editor, you see each change within a second.
+dwio can run as an [MCP](https://modelcontextprotocol.io) server. An agent such as Claude Code, Codex, or opencode can then read, draw, and edit your diagrams. If you have the diagram open in the dwio editor, you see each change within a second.
 
-Add dwio to your agent one time:
-
-```sh
-claude mcp add dwio -- dwio mcp
-```
-
-For opencode, add this to `opencode.json` (or `opencode.jsonc`) in your project, or to `~/.config/opencode/opencode.json` for all projects:
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": { "servers": { "dwio": { "type": "local", "command": ["dwio", "mcp"] } } }
-}
-```
-
-Older opencode versions, and the opencode MCP docs page, use the flat form `"mcp": { "dwio": { … } }`. The current schema marks it deprecated.
+Add dwio to your agent one time. See [Add dwio to your agent](agent-setup.md) for Claude Code, Codex, and opencode.
 
 Then ask the agent in plain words, in a folder that has a diagram:
 
@@ -36,7 +21,7 @@ The agent gets six tools:
 
 Each tool takes the path of the file. The file can be a `.drawio` or a `.drawio.svg` file. If you have exactly one diagram open in the dwio editor, the agent can leave the path out, and dwio uses the open diagram. The answer says which file it used. If no diagram is open, or more than one is, the agent gets an error that says so.
 
-The tools can use only files inside one folder: the folder where `dwio mcp` starts. Agents normally start it in your project folder. A path that leaves this folder, with `..`, an absolute path, or a symbolic link, is refused with a message. This protects you if the agent makes a mistake, or if text inside a diagram misleads it. To allow another folder, add `--root`, for example `claude mcp add dwio -- dwio mcp --root . --root ~/diagrams`.
+The tools can use only files inside one folder: the folder where `dwio mcp` starts. Agents normally start it in your project folder. A path that leaves this folder, with `..`, an absolute path, or a symbolic link, is refused with a message. This protects you if the agent makes a mistake, or if text inside a diagram misleads it. To allow another folder, add `--root`. See [Add dwio to your agent](agent-setup.md#allow-more-folders).
 
 - `apply_changes` changes only the text that must change, so `git diff` shows only the new or changed lines. This is true for `.drawio` files. A `.drawio.svg` file keeps the whole diagram on one line.
 - For a `.drawio.svg` file, `apply_changes` also redraws the picture. This needs a Chrome, Chromium, or Edge browser. If there is none, the data is updated, the answer has a warning, and the picture stays old until the editor saves the file.
