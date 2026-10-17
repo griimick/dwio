@@ -52,9 +52,9 @@ describe("protocol", () => {
     expect((await rpc("nope")).error.code).toBe(-32601);
     expect(((await mcp.handle({ foo: 1 })) as any).error.code).toBe(-32600);
   });
-  test("tools/list names five tools with object schemas", async () => {
+  test("tools/list names six tools with object schemas", async () => {
     const tools = (await rpc("tools/list")).result.tools;
-    expect(tools.map((t: any) => t.name).sort()).toEqual(["apply_changes", "create_diagram", "get_diagram", "list_open_diagrams", "render"]);
+    expect(tools.map((t: any) => t.name).sort()).toEqual(["apply_changes", "create_diagram", "get_diagram", "get_style_guide", "list_open_diagrams", "render"]);
     for (const t of tools) {
       expect(t.inputSchema.type).toBe("object");
       expect(t.description.length).toBeGreaterThan(40);
@@ -63,6 +63,20 @@ describe("protocol", () => {
     const required = (n: string) => tools.find((t: any) => t.name === n).inputSchema.required ?? [];
     expect(required("create_diagram")).toContain("file");
     expect(required("get_diagram")).not.toContain("file");
+  });
+  test("the instructions steer the agent: edit files, read the guide, search icons elsewhere", async () => {
+    const text = (await rpc("initialize", { protocolVersion: "2025-06-18" })).result.instructions as string;
+    expect(text).toContain("not a tool that draws a diagram in the chat");
+    expect(text).toContain("get_style_guide");
+    expect(text).toContain("search_shapes");
+  });
+  test("get_style_guide needs no file and returns the guide; apply_changes points to it", async () => {
+    const r = await call("get_style_guide", {});
+    expect(r.isError).toBeUndefined();
+    expect(text(r)).toContain("Style guide for apply_changes");
+    const apply = (await rpc("tools/list")).result.tools.find((t: any) => t.name === "apply_changes");
+    expect(apply.description).toContain("get_style_guide");
+    expect(apply.description).toContain("search_shapes");
   });
   test("an unknown tool is a protocol error", async () => {
     expect((await rpc("tools/call", { name: "nope", arguments: {} })).error.code).toBe(-32602);

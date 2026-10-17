@@ -8,6 +8,7 @@ import { exportDiagram } from "./export.ts";
 import { emptyFile, kindFromPath } from "./format.ts";
 import { listInstances, type Instance } from "./instances.ts";
 import { isInside, realpathLoose, resolveInside } from "./safe-path.ts";
+import { STYLE_GUIDE } from "./style-guide.ts";
 import { atomicWrite } from "./server.ts";
 
 /**
@@ -45,11 +46,13 @@ export interface McpOptions {
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
 const INSTRUCTIONS = `Read and edit draw.io diagram files (.drawio and .drawio.svg) in this project.
+These tools change the files on disk. Use them, and not a tool that draws a diagram in the chat, when the user wants a file in the project changed. A new file comes from create_diagram.
 If the user says "this diagram" or names no file, call list_open_diagrams: it shows the diagram they have open in the editor.
 Workflow: get_diagram to see the cells and their ids; apply_changes to add, update or delete cells; render to look at the result.
+Before you draw new shapes, call get_style_guide once. For cloud, network or brand icons, use a shape search tool if you have one (for example the draw.io MCP "search_shapes") and pass the style string from its result as "style".
 Check the picture after a change. If a person has the diagram open in the dwio editor, they see your edits within a second.
 Labels are plain text (use \\n for a line break). Coordinates are in pixels; y grows downward. Connect shapes with add_edge using their ids.
-Use create_diagram to make a new file. Do not edit the diagram XML by hand.`;
+Do not edit the diagram XML by hand.`;
 
 const textResult = (text: string): ToolResult => ({ content: [{ type: "text", text }] });
 const errorResult = (text: string): ToolResult => ({ content: [{ type: "text", text }], isError: true });
@@ -124,6 +127,14 @@ export function createMcp(opts: McpOptions) {
 
   const tools: Tool[] = [
     {
+      name: "get_style_guide",
+      description: "Short guide to the style strings, colors, arrows, containers and layout rules to use with apply_changes. Read it once before you draw new shapes.",
+      inputSchema: { type: "object", properties: {} },
+      async run() {
+        return textResult(STYLE_GUIDE);
+      },
+    },
+    {
       name: "list_open_diagrams",
       description: "List the diagrams that the user has open in the dwio editor right now (only those inside the allowed folder). Use it when the user says \"this diagram\" or does not name a file.",
       inputSchema: { type: "object", properties: {} },
@@ -184,7 +195,7 @@ export function createMcp(opts: McpOptions) {
     },
     {
       name: "apply_changes",
-      description: "Change a diagram with a list of operations: add shapes (add_vertex), connect them (add_edge), change a cell (update: label, style, position, size, parent, source, target) or remove one (delete). Operations run in order and either all succeed or none are applied. Returns the ids that were added or changed. The file is edited in place, with minimal changes to the text. For a .drawio.svg file the picture is redrawn too.",
+      description: "Change a diagram with a list of operations: add shapes (add_vertex), connect them (add_edge), change a cell (update: label, style, position, size, parent, source, target) or remove one (delete). Operations run in order and either all succeed or none are applied. Returns the ids that were added or changed. The file is edited in place, with minimal changes to the text. For a .drawio.svg file the picture is redrawn too. For style strings, see get_style_guide. For cloud or brand icons, find the exact style with a shape search tool (such as the draw.io MCP tool search_shapes) and pass it as style.",
       inputSchema: { type: "object", properties: { file: fileProp, ops: { type: "array", items: OP_SCHEMA, description: "The operations, in order." } }, required: ["ops"] },
       async run(args) {
         const { path, note } = await fileArg(args);
