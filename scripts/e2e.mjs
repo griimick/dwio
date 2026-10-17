@@ -33,6 +33,7 @@ try {
   // The editor fills the page; sync state is shown in draw.io's own menu bar.
   const bar = await frame().locator(".geMenubarContainer").innerText();
   assert.match(bar, /e2e\.drawio/, "file name in the menu bar");
+  assert.equal(await page.title(), "e2e.drawio | dwio", "tab title is the file name and the program name");
 
   // 1. Editing in the browser reaches the file.
   await page.mouse.dblclick(273 + 60, 109 + 30);
@@ -57,10 +58,12 @@ try {
   await page.keyboard.type("A-mine");
   await page.mouse.click(700, 500);
   await page.waitForFunction(() => window.__dwio.last === "dirty");
+  assert.equal(await page.title(), "● e2e.drawio | dwio", "unsaved edits show a dot in the tab title");
   writeFileSync(file, mx(cell("A", "A0", 40), cell("B", "B-other", 240)));
   await page.getByText("Merged changes from disk").waitFor({ timeout: 15000 });
   await page.evaluate(() => (window.__dwio.holdSaves = false));
   await last("saved");
+  assert.equal(await page.title(), "e2e.drawio | dwio", "the dot goes away after saving");
   const merged = read();
   assert.ok(merged.includes("A-mine") && merged.includes("B-other"), "both the local and the outside edit survive");
 

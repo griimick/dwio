@@ -38,7 +38,7 @@ const post = (msg) => frame.contentWindow.postMessage(JSON.stringify(msg), locat
 // ---- status in draw.io's menu bar -------------------------------------------------------------
 function setStatus(text, last) {
   window.__dwio.last = last ?? text;
-  document.title = (dirty ? "● " : "") + (name || "draw.io");
+  document.title = (dirty ? "● " : "") + (name ? `${name} | dwio` : "dwio"); // "●" marks unsaved edits
   if (frame.contentWindow) post({ action: "status", message: `${name} · ${text}` });
 }
 
