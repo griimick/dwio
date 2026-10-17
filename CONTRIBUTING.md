@@ -29,6 +29,7 @@ bun run check        # type check and tests. Run this before each commit.
 | `src/cli.ts` | Reads the options and starts the server. |
 | `src/server.ts` | The local web server, the file API, and the file watcher. |
 | `src/format.ts` | Reads and writes `.drawio` and `.drawio.svg` files. |
+| `src/export.ts`, `src/cdp.ts`, `src/browser.ts` | `dwio export`. It runs a browser without a screen and reads the picture from the draw.io editor. |
 | `src/assets.ts` | Downloads and caches the draw.io editor. |
 | `src/web/` | The page that holds the editor and talks to the server. |
 | `scripts/` | Build scripts and the browser test. |
@@ -42,7 +43,7 @@ bun run check        # type check and tests. Run this before each commit.
 
 ## Tests
 
-Add a test with each change in behavior. The tests in `test/` do not need a browser.
+Add a test with each change in behavior. Most tests in `test/` do not need a browser. The export tests that use a real browser skip themselves when no browser or no cached draw.io editor is found. Run `bun src/cli.ts setup` once to cache the editor.
 
 To test the editor in a real browser, use `scripts/e2e.mjs`. This test is optional. It needs the `playwright` package and a browser. Do not commit them.
 

@@ -48,7 +48,7 @@ To install in a different folder, set `DWIO_INSTALL_DIR`. To install a specific 
 
 On Windows, download `dwio-windows-x64.exe` from the [Releases page](https://github.com/griimick/dwio/releases).
 
-The first time you run dwio, it downloads the draw.io editor (about 50 MB). It saves the editor in `~/.cache/dwio`. After that, dwio does not use the network. To download the editor in advance, run `dwio setup`.
+The first time you run dwio, it downloads the draw.io editor (about 50 MB). It saves the editor in your cache folder. On Linux this is `$XDG_CACHE_HOME/dwio`, or `~/.cache/dwio` if that variable is not set. On macOS it is `~/Library/Caches/dwio`. On Windows it is `%LOCALAPPDATA%\dwio\Cache`. To use a different folder, set `DWIO_CACHE_DIR`. After that, dwio does not use the network. To download the editor in advance, run `dwio setup`.
 
 ## Quick start
 
@@ -64,6 +64,7 @@ To stop dwio at any time, press `Ctrl+C`.
 | --- | --- |
 | `dwio <file>` | Opens the file in the editor and keeps the file in sync. |
 | `dwio xml <file>` | Prints the diagram as plain XML. Use it in scripts. |
+| `dwio export <file>` | Makes a picture of the diagram: PNG, SVG, PDF, or `.drawio.svg`. See [Export a picture](#export-a-picture). |
 | `dwio setup` | Downloads the draw.io editor. |
 | `dwio --help` | Shows all options. |
 | `dwio --version` | Shows the dwio version and the draw.io version. |
@@ -83,6 +84,35 @@ To stop dwio at any time, press `Ctrl+C`.
 | `--drawio-version <v>` | Uses this version of the draw.io editor. |
 
 The default port is `3946`. This number is "dwio" on a phone keypad. If port 3946 is busy, dwio tries the next ports, up to 3966. To change the default port, set the environment variable `DWIO_PORT`.
+
+## Export a picture
+
+Use `dwio export` to see how a diagram looks. It does not open the editor. It draws the diagram and writes an image file.
+
+```sh
+dwio export diagram.drawio.svg                 # writes diagram.png next to the file
+dwio export diagram.drawio -o /tmp/look.png    # choose the output file
+dwio export diagram.drawio -o diagram.pdf      # the extension sets the format
+dwio export diagram.drawio -o -  > out.png     # write to standard output
+dwio export diagram.drawio -o copy.drawio.svg  # make a .drawio.svg from a .drawio file
+```
+
+dwio needs a Chrome, Chromium, or Edge browser on your computer to draw the diagram. dwio looks for one in `PATH`, in the usual install folders, and in the Playwright cache. To use a specific browser, set `DWIO_BROWSER` or use `--browser <path>`. dwio does not open a window. The browser runs without a screen.
+
+| Option | What it does |
+| --- | --- |
+| `-o`, `--output <path>` | Output file. The extension sets the format. Use `-` for standard output. |
+| `--format <f>` | `png`, `svg`, `pdf`, or `drawio.svg`. This overrides the extension. |
+| `--page <n or name>` | Exports one page. Use the page number (from 1) or the exact page name. The default is page 1. |
+| `--all-pages` | Exports each page to its own file: `name-1.png`, `name-2.png`, and so on. |
+| `--scale <x>` | Zoom factor. The default is 2 for PNG and 1 for the other formats. |
+| `--border <px>` | Space around the drawing. The default is 10. |
+| `--background <color>` | Background color, for example `"#ffffff"`. PNG and PDF are white by default. |
+| `--transparent` | Makes the PNG background transparent. |
+| `--timeout <seconds>` | Stops after this time. The default is 60. |
+| `--json` | Prints the result as JSON: file path, format, page, size in bytes, and image size in pixels. |
+
+A `.drawio.svg` export keeps all pages of the file unless you set `--page` or `--all-pages`. Other formats export page 1 unless you choose a page. If the file has more pages, dwio prints a note on standard error.
 
 ## Use dwio from another computer
 
@@ -116,9 +146,12 @@ dwio diagram.drawio.svg --public-port 8080
 An agent cannot use the browser editor. An agent can do these tasks:
 
 - Read a diagram: `dwio xml <file>` prints plain XML.
+- Look at a diagram: `dwio export <file> -o /tmp/look.png` makes an image. An agent that can read images then sees the real result. Use `--page` or `--all-pages` for files with more than one page.
 - Start the editor for you: `dwio <file> --no-open --json` prints one line of JSON with the URL.
 
-dwio writes only the URL (or the JSON) to standard output. It writes all other messages to standard error. The exit codes are `0` (success), `1` (error), and `2` (wrong usage).
+A good loop for an agent is: change the XML, run `dwio export`, look at the image, and repeat. To write the change back into a `.drawio.svg` file, use `dwio export changed.drawio -o diagram.drawio.svg`. This makes the picture and the diagram data again.
+
+With `--json`, dwio writes only the result to standard output. It writes all other messages to standard error. The exit codes are `0` (success), `1` (error), and `2` (wrong usage).
 
 Agents that work on the dwio code must read [AGENTS.md](AGENTS.md).
 
@@ -129,6 +162,8 @@ Agents that work on the dwio code must read [AGENTS.md](AGENTS.md).
 **"port … is in use".** Another program uses the port. Use a different port with `--port`.
 
 **The editor shows "file changed on disk".** The file changed while you had unsaved edits. Click **Reload from disk** to load the new file. Click **Overwrite disk** to keep your edits.
+
+**"No Chrome, Chromium or Edge browser found".** `dwio export` needs a browser to draw the diagram. Install one, or set `DWIO_BROWSER` to its full path.
 
 **The browser does not open.** Use `--no-open`, and open the printed URL yourself. On Linux, dwio uses `xdg-open`. To use a different browser, set the `BROWSER` environment variable.
 
