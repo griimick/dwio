@@ -4,33 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>draw.io</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='1' width='6' height='5' rx='1' fill='%236c8ebf'/%3E%3Crect x='9' y='10' width='6' height='5' rx='1' fill='%2382b366'/%3E%3Cpath d='M4 6v4h5' stroke='%23666' fill='none'/%3E%3C/svg%3E">
 <style>
-  :root { color-scheme: light dark; --bar: #f3f3f3; --fg: #222; --muted: #777; --ok: #1a7f37; --warn: #b35900; --err: #cf222e; }
-  @media (prefers-color-scheme: dark) { :root { --bar: #1e1e1e; --fg: #ddd; --muted: #999; --ok: #3fb950; --warn: #d29922; --err: #f85149; } }
-  html, body { margin: 0; height: 100%; }
-  body { display: flex; flex-direction: column; font: 13px system-ui, sans-serif; background: var(--bar); color: var(--fg); }
-  #bar { display: flex; align-items: center; gap: 12px; padding: 4px 10px; min-height: 26px; }
-  #name { font-weight: 600; }
-  #status { color: var(--muted); }
-  #status[data-state="saved"] { color: var(--ok); }
-  #status[data-state="saving"], #status[data-state="dirty"] { color: var(--warn); }
-  #status[data-state="error"] { color: var(--err); }
-  #actions { margin-left: auto; display: none; gap: 6px; }
-  #actions.show { display: flex; }
-  button { font: inherit; padding: 2px 10px; cursor: pointer; }
-  iframe { flex: 1; border: 0; width: 100%; background: #fff; }
+  :root { color-scheme: light dark; --bg: #fff; --card: #fff; --fg: #222; --line: #c8c8c8; --err: #cf222e; --ok: #1a7f37; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #1e1e1e; --card: #2b2b2b; --fg: #e6e6e6; --line: #555; --err: #f85149; --ok: #3fb950; } }
+  html, body { margin: 0; height: 100%; background: var(--bg); }
+  iframe { display: block; border: 0; width: 100%; height: 100%; }
+  #toasts { position: fixed; right: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 8px; z-index: 10; max-width: min(380px, calc(100vw - 28px)); }
+  .toast { font: 13px/1.4 system-ui, sans-serif; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--ok); border-radius: 6px; padding: 8px 12px; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); }
+  .toast.error { border-left-color: var(--err); }
+  .toast .row { display: flex; gap: 8px; margin-top: 8px; }
+  .toast button { font: inherit; padding: 2px 10px; cursor: pointer; }
 </style>
 </head>
 <body>
-<div id="bar">
-  <span id="name"></span>
-  <span id="status" data-state="loading">loading…</span>
-  <span id="actions">
-    <button id="reload">Reload from disk</button>
-    <button id="overwrite">Overwrite disk</button>
-  </span>
-</div>
 <iframe id="editor" title="draw.io editor"></iframe>
+<div id="toasts" role="status" aria-live="polite"></div>
 <script src="/host.js"></script>
 </body>
 </html>

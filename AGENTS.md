@@ -31,7 +31,7 @@ Tooling is Bun only (>= 1.2): no Node or npm needed to develop, test or release.
 - `src/web-assets.ts`, `src/meta.ts` – web page + version as plain modules; `scripts/inline-plugin.ts` (used by `build-binaries.ts` and `build-npm.ts`) swaps them for inlined constants when compiling with Bun. Anything that reads files relative to `import.meta.url` must go through such a module or it will break in the binary.
 - `src/export.ts`, `src/cdp.ts`, `src/browser.ts` – `dwio export`: starts the normal loopback server, launches a locally installed Chrome/Chromium/Edge headless, drives it over the DevTools protocol (Node/Bun global `WebSocket`, no dependency), and loads `/export` (`src/web/export.{html,js}`), which asks the draw.io embed iframe to render. PDF is printed from the SVG. Browser profile goes to the OS temp dir and is deleted.
 - `src/assets.ts` – one-time download/cache of the pinned draw.io release (`DRAWIO_VERSION`).
-- `src/web/host.{html,js}` – page that hosts the draw.io iframe and bridges its postMessage JSON protocol to the API. Plain JS, no build step.
+- `src/web/host.{html,js}` – page that hosts the draw.io iframe (full height; file name and sync state live in draw.io's own menu bar via the `title` of `load` and the `status` action; problems show as corner toasts) and bridges its postMessage JSON protocol to the API. Plain JS, no build step. Outside changes: clean tab → `load`, dirty tab → `merge` (never `merge` a clean tab: draw.io's baseline is stale and a reset by git would not apply). `window.__dwio` is a test hook for `scripts/e2e.mjs`.
 - `test/` – `bun:test` suites. `format` is pure; `server` is an integration test with a fake webapp dir.
 
 ## Invariants — do not break
@@ -40,7 +40,7 @@ Tooling is Bun only (>= 1.2): no Node or npm needed to develop, test or release.
 3. **Own writes must not echo** as external changes (server tracks `lastHash`). Keep the SSE test green.
 4. **SVG saves come from draw.io's `xmlsvg` export**, never hand-built, so rendering and embedded data stay consistent.
 5. **No network after `setup`.** The editor iframe uses `offline=1&stealth=1&pwa=0`.
-6. Stdout is for machine-readable output only; human messages go to stderr. (`export -o -` writes the image itself to stdout.)
+6. Colors (`src/color.ts`, and the same palette in `install.sh`): dim / red / one orange accent / cyan for links, only on a TTY (a pipe or file is always plain, so stdout results stay machine-readable; the one styled stdout item is the editor URL, cyan on a TTY), `NO_COLOR` always wins, `FORCE_COLOR` forces. Errors print as `error: <message>`. Stdout is for machine-readable output only; human messages go to stderr. (`export -o -` writes the image itself to stdout.)
 7. Export must not add runtime dependencies or open any non-loopback port, and must always close the browser and delete its profile, also on errors.
 
 ## Conventions

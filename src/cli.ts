@@ -7,6 +7,7 @@ import { hostname } from "node:os";
 import { parseArgs } from "node:util";
 import { DRAWIO_VERSION, install, isInstalled, webappDir } from "./assets.ts";
 import { decompressDiagrams, emptyFile, kindFromPath, toEditorXml } from "./format.ts";
+import { colorHelp, styleFor } from "./color.ts";
 import { VERSION } from "./meta.ts";
 import { exportDiagram, parseFormat } from "./export.ts";
 import { atomicWrite, startServer } from "./server.ts";
@@ -55,7 +56,11 @@ Exit codes: 0 ok, 1 runtime error, 2 usage error.
 
 class UsageError extends Error {}
 
+const err = styleFor(process.stderr);
+const out = styleFor(process.stdout);
 const log = (msg: string): void => void process.stderr.write(msg + "\n");
+/** Progress and status notes: dim, so the result stands out. */
+const info = (msg: string): void => log(err.dim(msg));
 
 function openBrowser(url: string): void {
   const custom = process.env.BROWSER;
@@ -67,7 +72,7 @@ function openBrowser(url: string): void {
         ? ["cmd", ["/c", "start", "", url]]
         : ["xdg-open", [url]];
   const child = spawn(cmd, args, { stdio: "ignore", detached: true });
-  child.on("error", () => log(`Could not launch a browser; open the URL manually.`));
+  child.on("error", () => log(`${err.accent("Could not launch a browser;")} open the URL manually.`));
   child.unref();
 }
 
@@ -107,7 +112,7 @@ async function main(argv: string[]): Promise<number> {
   const { values, positionals } = parsed;
 
   if (values.help) {
-    process.stdout.write(HELP);
+    process.stdout.write(colorHelp(HELP, styleFor(process.stdout)));
     return 0;
   }
   if (values.version) {
@@ -119,7 +124,7 @@ async function main(argv: string[]): Promise<number> {
   const [first, ...rest] = positionals;
 
   if (first === "setup") {
-    const dir = await install(version, log);
+    const dir = await install(version, info);
     process.stdout.write(values.json ? JSON.stringify({ webapp: dir, version }) + "\n" : dir + "\n");
     return 0;
   }
@@ -146,7 +151,7 @@ async function main(argv: string[]): Promise<number> {
     };
     const format = values.format === undefined ? undefined : (() => { try { return parseFormat(values.format!); } catch (e) { throw new UsageError((e as Error).message); } })();
     const timeout = numeric("timeout", values.timeout, 1);
-    if (!isInstalled(version)) await install(version, log);
+    if (!isInstalled(version)) await install(version, info);
     const results = await exportDiagram({
       file: resolve(file),
       webapp: webappDir(version),
@@ -160,7 +165,7 @@ async function main(argv: string[]): Promise<number> {
       transparent: values.transparent,
       browser: values.browser,
       timeoutMs: timeout === undefined ? undefined : timeout * 1000,
-      log,
+      log: info,
     });
     if (results.length === 1 && results[0]!.data) {
       process.stdout.write(results[0]!.data);
@@ -192,10 +197,10 @@ async function main(argv: string[]): Promise<number> {
     if (values["no-create"]) throw new Error(`${file} does not exist`);
     if (!existsSync(dirname(file))) throw new Error(`directory ${dirname(file)} does not exist`);
     await atomicWrite(file, emptyFile(kind));
-    log(`Created ${file}`);
+    info(`Created ${file}`);
   }
 
-  if (!isInstalled(version)) await install(version, log);
+  if (!isInstalled(version)) await install(version, info);
 
   let stop: () => void = () => {};
   const done = new Promise<void>((res) => (stop = res));
@@ -206,7 +211,7 @@ async function main(argv: string[]): Promise<number> {
     allowHosts: values["allow-host"],
     publicPort,
     onIdle: values["keep-alive"] ? undefined : () => {
-      log("Editor closed; shutting down.");
+      info("Editor closed; shutting down.");
       stop();
     },
   };
@@ -223,14 +228,17 @@ async function main(argv: string[]): Promise<number> {
     }
   }
   if (!server) throw new Error("could not start server");
-  if (requested === undefined && server.port !== DEFAULT_PORT) log(`Port ${DEFAULT_PORT} is busy; using ${server.port}.`);
+  if (requested === undefined && server.port !== DEFAULT_PORT) info(`Port ${DEFAULT_PORT} is busy; using ${server.port}.`);
 
-  process.stdout.write(values.json ? JSON.stringify({ url: server.url, urls: server.urls, port: server.port, file, kind, pid: process.pid }) + "\n" : server.url + "\n");
-  log(`Editing ${file} (${kind}). Ctrl+C to stop.`);
+  process.stdout.write(values.json ? JSON.stringify({ url: server.url, urls: server.urls, port: server.port, file, kind, pid: process.pid }) + "\n" : out.link(server.url) + "\n");
+  log(`${err.dim("Editing")} ${file} ${err.dim(`(${kind}). Ctrl+C to stop.`)}`);
   if (host !== "127.0.0.1" && host !== "::1") {
-    log(`WARNING: listening on ${host}. Anyone who can reach this port and has the URL token can read and overwrite ${file}.`);
-    for (const u of server.urls) log(`  ${u}`);
-    log(`  http://${hostname()}:${server.port}/?t=${server.token}   (this machine's hostname)`);
+    log("");
+    log(`${err.accent("WARNING:")} listening on ${host}. Anyone who can reach this port and has the URL token can read and overwrite ${file}.`);
+    log("");
+    for (const u of server.urls) log(`  ${err.link(u)}`);
+    log(`  ${err.link(`http://${hostname()}:${server.port}/?t=${server.token}`)}  ${err.dim("(this machine's hostname)")}`);
+    log("");
   }
   if (!values["no-open"]) openBrowser(server.url);
 
@@ -243,9 +251,9 @@ async function main(argv: string[]): Promise<number> {
 main(process.argv.slice(2)).then(
   (code) => process.exit(code),
   (e: Error) => {
-    log(`dwio: ${e.message}`);
+    log(`${err.red("error:")} ${e.message}`);
     if (e instanceof UsageError) {
-      log("Run 'dwio --help' for usage.");
+      info("Run 'dwio --help' for usage.");
       process.exit(2);
     }
     process.exit(1);
