@@ -58,3 +58,9 @@ export function decompressDiagrams(mxfile: string): string {
     }
   });
 }
+
+/** Rewrites file text so embedded diagrams are plain XML (readable git diffs) instead of draw.io's compressed form. */
+export function normalizeForDisk(text: string, kind: Kind): string {
+  if (kind === "drawio") return decompressDiagrams(text);
+  return text.replace(/(<svg\b[^>]*?\scontent\s*=\s*)"([^"]*)"/i, (_, pre: string, raw: string) => `${pre}"${escapeAttr(decompressDiagrams(unescapeXml(raw)))}"`);
+}

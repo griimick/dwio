@@ -5,7 +5,7 @@ import { createServer as createHttpServer, type IncomingMessage, type Server, ty
 import type { AddressInfo } from "node:net";
 import { basename, dirname, extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { kindFromPath, toEditorXml, type Kind } from "./format.ts";
+import { kindFromPath, normalizeForDisk, toEditorXml, type Kind } from "./format.ts";
 
 const MAX_BODY = 64 * 1024 * 1024;
 const WEB_DIR = fileURLToPath(new URL("./web/", import.meta.url));
@@ -171,9 +171,10 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       }
 
       if (req.method === "PUT" && path === "/api/file") {
-        const body = await readBody(req);
+        const received = await readBody(req);
         const marker = kind === "svg" ? "<svg" : "<mxfile";
-        if (!body.includes(marker)) return json(res, 400, { error: `body does not look like a ${kind} file` });
+        if (!received.includes(marker)) return json(res, 400, { error: `body does not look like a ${kind} file` });
+        const body = normalizeForDisk(received, kind);
         const base = req.headers["x-base-hash"];
         if (typeof base === "string" && base !== "") {
           const disk = existsSync(opts.file) ? (await readDisk()).hash : null;
