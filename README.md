@@ -37,9 +37,9 @@ Make sure `~/.local/bin` is in your `PATH`.
 If you have Node.js 18.3 or newer, you can run dwio with `npx`. You do not install anything.
 
 ```sh
-npx @griimick/dwio diagram.drawio.svg
-pnpm dlx @griimick/dwio diagram.drawio.svg
-bunx @griimick/dwio diagram.drawio.svg
+npx drawsync diagram.drawio.svg
+pnpm dlx drawsync diagram.drawio.svg
+bunx drawsync diagram.drawio.svg
 ```
 
 To install in a different folder, set `DWIO_INSTALL_DIR`. To install a specific version, set `DWIO_VERSION`, for example `DWIO_VERSION=v0.1.0`.
@@ -154,11 +154,11 @@ The `release` workflow checks that the tag matches `package.json`. It runs the t
 
 Do these steps one time:
 
-1. Log in with `npm login`. Run `npm publish --access public` in the project folder. This makes the package `@griimick/dwio` on npm. The name `dwio` without a scope is not possible, because npm blocks names that are too close to `swig` and `twig`. The command that the package installs is still `dwio`.
+1. Log in with `npm login`. Run `npm publish` in the project folder. This makes the package `drawsync` on npm. The name `dwio` is not possible, because npm blocks names that are too close to `swig` and `twig`. The command that the package installs is still `dwio`.
 2. On npmjs.com, open the package settings. Under **Trusted publisher**, add GitHub Actions with owner `griimick`, repository `dwio`, and workflow `release.yml`.
 3. On GitHub, open **Settings**, **Secrets and variables**, **Actions**, **Variables**. Add the variable `NPM_PUBLISH` with the value `true`.
 
-To install the command for all projects, run `npm install -g @griimick/dwio`.
+To install the command for all projects, run `npm install -g drawsync`.
 
 After this, each release tag also publishes the package to npm. The package has a provenance mark. The `npm` job in `release.yml` does the work.
 
@@ -172,4 +172,6 @@ Do not trust this software without a review. Test it before you use it for impor
 
 [MIT](LICENSE).
 
-draw.io is a trademark of JGraph Ltd. dwio does not include draw.io. dwio downloads draw.io from the upstream Apache-2.0 project the first time you run it.
+draw.io is a registered trademark of draw.io Ltd and draw.io AG. dwio is an independent project. It is not connected with, approved by, or sponsored by draw.io Ltd or draw.io AG. The name "draw.io" appears in this project only to say which file format and editor dwio works with.
+
+dwio does not include draw.io. The first time you run dwio, it downloads draw.io from the [upstream project](https://github.com/jgraph/drawio). The upstream project uses the Apache-2.0 license.
