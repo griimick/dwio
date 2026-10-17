@@ -8,11 +8,16 @@ Add dwio to your agent one time:
 claude mcp add dwio -- dwio mcp
 ```
 
-For opencode, add this to `opencode.json` in your project (not tested yet):
+For opencode, add this to `opencode.json` (or `opencode.jsonc`) in your project, or to `~/.config/opencode/opencode.json` for all projects:
 
 ```json
-{ "mcp": { "dwio": { "type": "local", "command": ["dwio", "mcp"] } } }
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": { "servers": { "dwio": { "type": "local", "command": ["dwio", "mcp"] } } }
+}
 ```
+
+Older opencode versions, and the opencode MCP docs page, use the flat form `"mcp": { "dwio": { … } }`. The current schema marks it deprecated.
 
 Then ask the agent in plain words, in a folder that has a diagram:
 
