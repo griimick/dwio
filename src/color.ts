@@ -1,10 +1,13 @@
-// Minimal terminal colors, in the style of opencode's installer: dim labels, red errors, one orange accent.
+// Minimal terminal colors, in the style of opencode's installer: dim labels, red errors, one orange accent,
+// and cyan for links.
 // Colors are used only when the stream is a terminal. NO_COLOR turns them off; FORCE_COLOR turns them on.
 
 export interface Style {
   dim(s: string): string;
   red(s: string): string;
   accent(s: string): string;
+  /** Cyan, for links that the user can open. */
+  link(s: string): string;
 }
 
 export interface ColorEnv {
@@ -21,7 +24,7 @@ export function colorEnabled({ env, isTTY }: ColorEnv): boolean {
 const wrap = (on: boolean, code: string) => (s: string): string => (on ? `\x1b[${code}m${s}\x1b[0m` : s);
 
 export function makeStyle(enabled: boolean): Style {
-  return { dim: wrap(enabled, "0;2"), red: wrap(enabled, "0;31"), accent: wrap(enabled, "38;5;214") };
+  return { dim: wrap(enabled, "0;2"), red: wrap(enabled, "0;31"), accent: wrap(enabled, "38;5;214"), link: wrap(enabled, "0;36") };
 }
 
 /** Style for one output stream (stdout and stderr are decided separately, so a pipe on one does not affect the other). */

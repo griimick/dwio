@@ -40,7 +40,7 @@ Tooling is Bun only (>= 1.2): no Node or npm needed to develop, test or release.
 3. **Own writes must not echo** as external changes (server tracks `lastHash`). Keep the SSE test green.
 4. **SVG saves come from draw.io's `xmlsvg` export**, never hand-built, so rendering and embedded data stay consistent.
 5. **No network after `setup`.** The editor iframe uses `offline=1&stealth=1&pwa=0`.
-6. Colors (`src/color.ts`, and the same palette in `install.sh`): dim / red / one orange accent, stderr and help text only, never on stdout results, only on a TTY, `NO_COLOR` always wins, `FORCE_COLOR` forces. Errors print as `error: <message>`. Stdout is for machine-readable output only; human messages go to stderr. (`export -o -` writes the image itself to stdout.)
+6. Colors (`src/color.ts`, and the same palette in `install.sh`): dim / red / one orange accent / cyan for links, only on a TTY (a pipe or file is always plain, so stdout results stay machine-readable; the one styled stdout item is the editor URL, cyan on a TTY), `NO_COLOR` always wins, `FORCE_COLOR` forces. Errors print as `error: <message>`. Stdout is for machine-readable output only; human messages go to stderr. (`export -o -` writes the image itself to stdout.)
 7. Export must not add runtime dependencies or open any non-loopback port, and must always close the browser and delete its profile, also on errors.
 
 ## Conventions

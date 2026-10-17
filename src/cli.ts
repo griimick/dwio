@@ -57,6 +57,7 @@ Exit codes: 0 ok, 1 runtime error, 2 usage error.
 class UsageError extends Error {}
 
 const err = styleFor(process.stderr);
+const out = styleFor(process.stdout);
 const log = (msg: string): void => void process.stderr.write(msg + "\n");
 /** Progress and status notes: dim, so the result stands out. */
 const info = (msg: string): void => log(err.dim(msg));
@@ -229,12 +230,15 @@ async function main(argv: string[]): Promise<number> {
   if (!server) throw new Error("could not start server");
   if (requested === undefined && server.port !== DEFAULT_PORT) info(`Port ${DEFAULT_PORT} is busy; using ${server.port}.`);
 
-  process.stdout.write(values.json ? JSON.stringify({ url: server.url, urls: server.urls, port: server.port, file, kind, pid: process.pid }) + "\n" : server.url + "\n");
+  process.stdout.write(values.json ? JSON.stringify({ url: server.url, urls: server.urls, port: server.port, file, kind, pid: process.pid }) + "\n" : out.link(server.url) + "\n");
   log(`${err.dim("Editing")} ${file} ${err.dim(`(${kind}). Ctrl+C to stop.`)}`);
   if (host !== "127.0.0.1" && host !== "::1") {
+    log("");
     log(`${err.accent("WARNING:")} listening on ${host}. Anyone who can reach this port and has the URL token can read and overwrite ${file}.`);
-    for (const u of server.urls) log(`  ${u}`);
-    log(`  http://${hostname()}:${server.port}/?t=${server.token}   (this machine's hostname)`);
+    log("");
+    for (const u of server.urls) log(`  ${err.link(u)}`);
+    log(`  ${err.link(`http://${hostname()}:${server.port}/?t=${server.token}`)}  ${err.dim("(this machine's hostname)")}`);
+    log("");
   }
   if (!values["no-open"]) openBrowser(server.url);
 
