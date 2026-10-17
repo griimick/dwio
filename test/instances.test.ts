@@ -18,8 +18,11 @@ describe("where the folder is", () => {
   test("by platform and environment", () => {
     expect(runDir({ DWIO_RUN_DIR: "/x" }, "linux", 1000)).toBe("/x");
     expect(runDir({ XDG_RUNTIME_DIR: "/run/user/1000" }, "linux", 1000)).toBe("/run/user/1000/dwio");
-    expect(runDir({ XDG_STATE_HOME: "/s" }, "linux", 1000)).toBe("/s/dwio/run");
-    expect(runDir({}, "linux", 1000)).toMatch(/\.local\/state\/dwio\/run$/);
+    expect(runDir({ XDG_STATE_HOME: "/s" }, "linux", 4242424)).toBe("/s/dwio/run");
+    expect(runDir({}, "linux", 4242424)).toMatch(/\.local\/state\/dwio\/run$/);
+    // an agent that strips XDG_RUNTIME_DIR must land in the same folder as the editor
+    const uid = process.getuid?.();
+    if (uid !== undefined && existsSync(`/run/user/${uid}`)) expect(runDir({}, "linux", uid)).toBe(runDir({ XDG_RUNTIME_DIR: `/run/user/${uid}` }, "linux", uid));
     expect(runDir({}, "darwin", 501)).toMatch(/dwio-501$/);
     expect(runDir({ LOCALAPPDATA: "C:\\L" }, "win32", undefined)).toContain("dwio");
   });
