@@ -52,14 +52,17 @@ describe("protocol", () => {
     expect((await rpc("nope")).error.code).toBe(-32601);
     expect(((await mcp.handle({ foo: 1 })) as any).error.code).toBe(-32600);
   });
-  test("tools/list names four tools with object schemas", async () => {
+  test("tools/list names five tools with object schemas", async () => {
     const tools = (await rpc("tools/list")).result.tools;
-    expect(tools.map((t: any) => t.name).sort()).toEqual(["apply_changes", "create_diagram", "get_diagram", "render"]);
+    expect(tools.map((t: any) => t.name).sort()).toEqual(["apply_changes", "create_diagram", "get_diagram", "list_open_diagrams", "render"]);
     for (const t of tools) {
       expect(t.inputSchema.type).toBe("object");
-      expect(t.inputSchema.required).toContain("file");
       expect(t.description.length).toBeGreaterThan(40);
     }
+    // "file" may be left out when one diagram is open, except to create a new file
+    const required = (n: string) => tools.find((t: any) => t.name === n).inputSchema.required ?? [];
+    expect(required("create_diagram")).toContain("file");
+    expect(required("get_diagram")).not.toContain("file");
   });
   test("an unknown tool is a protocol error", async () => {
     expect((await rpc("tools/call", { name: "nope", arguments: {} })).error.code).toBe(-32602);
@@ -78,7 +81,7 @@ describe("get_diagram", () => {
   test("a missing file and a wrong file type give clear errors, not crashes", async () => {
     expect(text(await call("get_diagram", { file: "missing.drawio" }))).toContain("does not exist. Use create_diagram");
     expect(text(await call("get_diagram", { file: "notes.txt" }))).toContain("not a diagram file");
-    expect((await call("get_diagram", {})).isError).toBe(true);
+    expect(text(await call("get_diagram", {}))).toContain("no diagram is open"); // no file, and none open
     writeFileSync(join(dir, "plain.svg"), `<svg xmlns="http://www.w3.org/2000/svg"/>`);
     expect(text(await call("get_diagram", { file: "plain.svg" }))).toContain("no embedded draw.io data");
   });
