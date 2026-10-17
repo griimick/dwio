@@ -20,7 +20,7 @@ dwio xml <file>      print uncompressed mxfile XML
 dwio setup           pre-download the draw.io web app
 ```
 
-Flags: `--no-open`, `--port <n>`, `--allow-host <name>`, `--public-port <n>` (for hostnames and tunnels, see below), `--host <addr>` (e.g. `0.0.0.0` to reach it from another machine; the URL token is then the only protection, over plain HTTP), `--keep-alive`, `--no-create`, `--json`, `--drawio-version <v>`. See `dwio --help`.
+Flags: `--no-open`, `--port <n>` (default 3946 — "dwio" on a phone keypad — falling back to the next free port; `DWIO_PORT` sets another default), `--allow-host <name>`, `--public-port <n>` (for hostnames and tunnels, see below), `--host <addr>` (e.g. `0.0.0.0` to reach it from another machine; the URL token is then the only protection, over plain HTTP), `--keep-alive`, `--no-create`, `--json`, `--drawio-version <v>`. See `dwio --help`.
 
 Requires Node >= 22.18.
 

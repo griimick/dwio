@@ -20,7 +20,7 @@ webapp is downloaded once into `~/.cache/dwio` and served offline afterwards.
 Requires Node >= 22.18 (native TypeScript type stripping). No runtime dependencies — keep it that way.
 
 ## Layout
-- `src/cli.ts` – arg parsing, command dispatch, browser launch. Stdout carries only the URL/JSON; logs go to stderr.
+- `src/cli.ts` – default port 3946 (slides up to +20 if busy; explicit `--port` never slides), arg parsing, command dispatch, browser launch. Stdout carries only the URL/JSON; logs go to stderr.
 - `src/server.ts` – HTTP server: static draw.io, `/api/file` (GET/PUT), `/api/events` (SSE), dir watcher, atomic writes.
 - `src/format.ts` – pure functions for `.drawio` / `.drawio.svg` (extract/escape `content` attr, inflate compressed pages).
 - `src/assets.ts` – one-time download/cache of the pinned draw.io release (`DRAWIO_VERSION`).

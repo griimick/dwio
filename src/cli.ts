@@ -9,6 +9,10 @@ import { DRAWIO_VERSION, install, isInstalled, webappDir } from "./assets.ts";
 import { decompressDiagrams, emptyFile, kindFromPath, toEditorXml } from "./format.ts";
 import { atomicWrite, startServer } from "./server.ts";
 
+/** "dwio" on a phone keypad. Stable across runs so bookmarks, tunnels and firewall rules keep working. */
+const DEFAULT_PORT = 3946;
+const PORT_SPAN = 20;
+
 const HELP = `dwio – edit local .drawio / .drawio.svg files in the draw.io editor, fully offline
 
 Usage:
@@ -18,7 +22,7 @@ Usage:
 
 Options:
   --no-open                Do not launch a browser; just print the URL
-  --port <n>               Listen on a fixed port (default: random free port)
+  --port <n>               Listen on exactly this port, or fail (default: ${DEFAULT_PORT}, then the next ${PORT_SPAN} if busy; env DWIO_PORT)
   --host <addr>            Bind address (default: 127.0.0.1). Use 0.0.0.0 to reach it from other machines;
                            the URL token is then the only protection and traffic is plain HTTP
   --allow-host <name>      Also accept this hostname in the Host header (repeatable), e.g. a LAN or Tailscale name
@@ -112,8 +116,11 @@ async function main(argv: string[]): Promise<number> {
 
   const host = values.host ?? "127.0.0.1";
   if (isIP(host) === 0) throw new UsageError(`invalid --host (expected an IP address): ${host}`);
-  const port = values.port === undefined ? 0 : Number(values.port);
-  if (!Number.isInteger(port) || port < 0 || port > 65535) throw new UsageError(`invalid --port: ${values.port}`);
+  const requested = values.port ?? process.env.DWIO_PORT;
+  const base = requested === undefined ? DEFAULT_PORT : Number(requested);
+  if (!Number.isInteger(base) || base < 0 || base > 65535) throw new UsageError(`invalid port: ${requested}`);
+  // An explicit --port (or 0 = any) is honoured exactly; only the built-in default is allowed to slide upward.
+  const candidates = requested === undefined ? Array.from({ length: PORT_SPAN + 1 }, (_, i) => DEFAULT_PORT + i) : [base];
 
   const publicPort = values["public-port"] === undefined ? undefined : Number(values["public-port"]);
   if (publicPort !== undefined && (!Number.isInteger(publicPort) || publicPort < 1 || publicPort > 65535)) throw new UsageError(`invalid --public-port: ${values["public-port"]}`);
@@ -129,10 +136,9 @@ async function main(argv: string[]): Promise<number> {
 
   let stop: () => void = () => {};
   const done = new Promise<void>((res) => (stop = res));
-  const server = await startServer({
+  const serverOpts = {
     file,
     webapp: webappDir(version),
-    port,
     host,
     allowHosts: values["allow-host"],
     publicPort,
@@ -140,7 +146,21 @@ async function main(argv: string[]): Promise<number> {
       log("Editor closed; shutting down.");
       stop();
     },
-  });
+  };
+  let server;
+  for (const [i, port] of candidates.entries()) {
+    try {
+      server = await startServer({ ...serverOpts, port });
+      break;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EADDRINUSE") throw e;
+      if (i === candidates.length - 1) {
+        throw new Error(`port ${port} is in use${candidates.length > 1 ? ` (tried ${candidates[0]}–${port})` : ""}; pick another with --port`);
+      }
+    }
+  }
+  if (!server) throw new Error("could not start server");
+  if (requested === undefined && server.port !== DEFAULT_PORT) log(`Port ${DEFAULT_PORT} is busy; using ${server.port}.`);
 
   process.stdout.write(values.json ? JSON.stringify({ url: server.url, urls: server.urls, port: server.port, file, kind, pid: process.pid }) + "\n" : server.url + "\n");
   log(`Editing ${file} (${kind}). Ctrl+C to stop.`);

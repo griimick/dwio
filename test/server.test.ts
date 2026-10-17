@@ -165,3 +165,12 @@ test("non-loopback bind auto-allows the machine's own hostname", async () => {
     await s.close();
   }
 });
+
+test("startServer rejects with EADDRINUSE and does not leak when the port is taken", async () => {
+  const other = await startServer({ file, webapp: join(dir, "app") });
+  try {
+    await assert.rejects(startServer({ file, webapp: join(dir, "app"), port: other.port }), { code: "EADDRINUSE" });
+  } finally {
+    await other.close();
+  }
+});

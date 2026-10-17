@@ -1,29 +1,29 @@
-<mxfile host="dwio">
+<mxfile host="egghead">
   <diagram id="flow" name="Flow">
-    <mxGraphModel dx="800" dy="500" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1420" dy="481" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
-        <mxCell id="0"/>
-        <mxCell id="1" parent="0"/>
-        <mxCell id="editor" value="draw.io editor&#xa;(browser)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="40" y="80" width="140" height="60" as="geometry"/>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="editor" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="draw.io editor&#xa;(browser)" vertex="1">
+          <mxGeometry height="60" width="140" x="-120" y="80" as="geometry" />
         </mxCell>
-        <mxCell id="server" value="dwio server&#xa;127.0.0.1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
-          <mxGeometry x="260" y="80" width="140" height="60" as="geometry"/>
+        <mxCell id="server" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="dwio server&#xa;127.0.0.1" vertex="1">
+          <mxGeometry height="60" width="140" x="190" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="file" value="diagram.drawio.svg&#xa;(in git)" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="480" y="75" width="140" height="70" as="geometry"/>
+        <mxCell id="file" parent="1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="diagram.drawio.svg&#xa;(in git)" vertex="1">
+          <mxGeometry height="70" width="140" x="480" y="65" as="geometry" />
         </mxCell>
-        <mxCell id="e1" value="autosave" style="endArrow=classic;html=1;exitX=1;exitY=0.3;entryX=0;entryY=0.3;" edge="1" parent="1" source="editor" target="server">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e1" edge="1" parent="1" source="editor" style="endArrow=classic;html=1;exitX=1;exitY=0.3;entryX=0;entryY=0.3;" target="server" value="autosave">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e2" value="atomic write" style="endArrow=classic;html=1;exitX=1;exitY=0.3;entryX=0;entryY=0.3;" edge="1" parent="1" source="server" target="file">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e2" edge="1" parent="1" source="server" style="endArrow=classic;html=1;exitX=1;exitY=0.3;entryX=0;entryY=0.3;" target="file" value="atomic write">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e3" value="reload on change" style="endArrow=classic;html=1;dashed=1;exitX=0;exitY=0.8;entryX=1;entryY=0.8;" edge="1" parent="1" source="server" target="editor">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e3" edge="1" parent="1" source="server" style="endArrow=classic;html=1;dashed=1;exitX=0;exitY=0.8;entryX=1;entryY=0.8;" target="editor" value="reload on change">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e4" value="fs watch" style="endArrow=classic;html=1;dashed=1;exitX=0;exitY=0.8;entryX=1;entryY=0.8;" edge="1" parent="1" source="file" target="server">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="e4" edge="1" parent="1" source="file" style="endArrow=classic;html=1;dashed=1;exitX=0;exitY=0.8;entryX=1;entryY=0.8;" target="server" value="fs watch">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

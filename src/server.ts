@@ -254,10 +254,15 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     }, 80);
   });
 
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(opts.port ?? 0, bindHost, resolve);
-  });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(opts.port ?? 0, bindHost, resolve);
+    });
+  } catch (e) {
+    watcher.close(); // don't leak the watcher when the port is taken
+    throw e;
+  }
   port = (server.address() as AddressInfo).port;
 
   return {
