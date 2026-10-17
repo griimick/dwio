@@ -29,6 +29,8 @@ The agent gets four tools:
 
 Each tool takes the path of the file. The file can be a `.drawio` or a `.drawio.svg` file.
 
+The tools can use only files inside one folder: the folder where `dwio mcp` starts. Agents normally start it in your project folder. A path that leaves this folder, with `..`, an absolute path, or a symbolic link, is refused with a message. This protects you if the agent makes a mistake, or if text inside a diagram misleads it. To allow another folder, add `--root`, for example `claude mcp add dwio -- dwio mcp --root . --root ~/diagrams`.
+
 - `apply_changes` changes only the text that must change, so `git diff` shows only the new or changed lines. This is true for `.drawio` files. A `.drawio.svg` file keeps the whole diagram on one line.
 - For a `.drawio.svg` file, `apply_changes` also redraws the picture. This needs a Chrome, Chromium, or Edge browser. If there is none, the data is updated, the answer has a warning, and the picture stays old until the editor saves the file.
 - `render` also needs a browser. See [Export a picture](export.md).

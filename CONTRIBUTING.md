@@ -76,6 +76,7 @@ A running dwio saves into the file that it has open. Use copies of the example d
 | `src/format.ts` | Reads and writes `.drawio` and `.drawio.svg` files. |
 | `src/export.ts`, `src/cdp.ts`, `src/browser.ts` | `dwio export`. It runs a browser without a screen and reads the picture from the draw.io editor. |
 | `src/xml.ts`, `src/diagram.ts`, `src/diagram-file.ts` | Reads and edits the cells of a diagram (for agents), in `.drawio` and `.drawio.svg` files. It changes only the text that must change. |
+| `src/safe-path.ts` | Keeps the MCP tools inside the allowed folders. Use it for every path that an agent gives. |
 | `src/mcp.ts` | `dwio mcp`. The MCP server that lets an agent read and edit diagrams. It must write protocol messages only to standard output. |
 | `src/upgrade.ts` | `dwio upgrade`. It downloads a release, checks it, and replaces the running program. |
 | `src/assets.ts` | Downloads and caches the draw.io editor. |
