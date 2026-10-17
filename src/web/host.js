@@ -30,15 +30,55 @@ let externalPending = false;
 let timer;
 
 // Read-only view of the state for the browser test (scripts/e2e.mjs). `holdSaves` pauses autosave.
-window.__dwio = { get dirty() { return dirty; }, get saving() { return saving; }, last: "", holdSaves: false };
+window.__dwio = { get dirty() { return dirty; }, get saving() { return saving; }, last: "", holdSaves: false, dot: "" };
 
 const clock = () => new Date().toLocaleTimeString();
 const post = (msg) => frame.contentWindow.postMessage(JSON.stringify(msg), location.origin);
 
+// ---- a dot on the tab icon ----------------------------------------------------------------------
+// A dot on the favicon shows the state even when the tab is pinned and the title is hidden.
+// Blue: unsaved edits or a save in progress. Red: a problem (save failed, or the connection to dwio is lost).
+const DOT_COLORS = { blue: "#1a73e8", red: "#d93025" };
+const DOT_FOR_STATE = { dirty: "blue", saving: "blue", error: "red", disconnected: "red" };
+const iconLinks = [...document.querySelectorAll('link[rel="icon"]')].map((link) => ({ link, original: link.href, size: Number(link.sizes.value.split("x")[0]) }));
+const iconImages = new Map(); // size -> loaded Image of the original icon
+
+function loadIcon({ original, size }) {
+  if (!iconImages.has(size)) {
+    iconImages.set(size, new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null); // no icon, no dot: never break the page for this
+      img.src = original;
+    }));
+  }
+  return iconImages.get(size);
+}
+
+async function setFaviconDot(color) {
+  if (color === window.__dwio.dot) return;
+  window.__dwio.dot = color;
+  for (const icon of iconLinks) {
+    if (!color) { icon.link.href = icon.original; continue; }
+    const img = await loadIcon(icon);
+    if (!img || window.__dwio.dot !== color) continue; // the state changed while the icon loaded
+    const c = document.createElement("canvas");
+    c.width = c.height = icon.size;
+    const ctx = c.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    const s = icon.size, cx = s * 0.72, cy = s * 0.72;
+    ctx.beginPath(); ctx.arc(cx, cy, s * 0.26, 0, Math.PI * 2); ctx.fillStyle = "rgba(255,255,255,0.96)"; ctx.fill(); // ring: shows on light and dark tab bars
+    ctx.beginPath(); ctx.arc(cx, cy, s * 0.2, 0, Math.PI * 2); ctx.fillStyle = DOT_COLORS[color]; ctx.fill();
+    icon.link.href = c.toDataURL("image/png");
+  }
+  if (!color) for (const icon of iconLinks) icon.link.href = icon.original; // restore wins over a late draw
+}
+
 // ---- status in draw.io's menu bar -------------------------------------------------------------
 function setStatus(text, last) {
   window.__dwio.last = last ?? text;
-  document.title = (dirty ? "● " : "") + (name ? `${name} | dwio` : "dwio"); // "●" marks unsaved edits
+  document.title = name ? `${name} | dwio` : "dwio"; // the state is shown by the dot on the tab icon, not here
+  void setFaviconDot(DOT_FOR_STATE[window.__dwio.last] ?? "");
   if (frame.contentWindow) post({ action: "status", message: `${name} · ${text}` });
 }
 
@@ -78,6 +118,7 @@ async function api(path, init = {}) {
 async function loadFromDisk(reason) {
   const { res, body } = await api("/api/file");
   if (!res.ok) {
+    setStatus("cannot read the file", "error");
     toast({ id: "read", kind: "error", sticky: true, text: body.error ?? "Cannot read the file.", actions: [{ label: "Try again", run: () => loadFromDisk(reason) }] });
     return;
   }
@@ -94,6 +135,7 @@ const mergeWaiters = [];
 async function mergeFromDisk() {
   const { res, body } = await api("/api/file");
   if (!res.ok) {
+    setStatus("cannot read the file", "error");
     toast({ id: "read", kind: "error", sticky: true, text: body.error ?? "Cannot read the changed file." });
     return;
   }
@@ -103,6 +145,7 @@ async function mergeFromDisk() {
   post({ action: "merge", xml: body.xml });
   const result = await Promise.race([done, new Promise((r) => setTimeout(() => r({ error: "timed out" }), 10000))]);
   if (result.error) {
+    setStatus("could not merge", "error");
     toast({ id: "merge", kind: "error", sticky: true, text: `Could not merge the changes from disk (${result.error}).`,
       actions: [{ label: "Load disk version (drop my edits)", run: () => loadFromDisk("reloaded") }, { label: "Keep mine", run: () => { baseHash = ""; scheduleSave(); } }] });
     return;
@@ -182,12 +225,13 @@ window.addEventListener("message", (e) => {
 let wasDown = false;
 const events = new EventSource("/api/events?t=" + encodeURIComponent(token));
 events.addEventListener("changed", onExternalChange);
-events.addEventListener("open", () => {
+events.addEventListener("open", async () => {
   if (!wasDown) return;
   wasDown = false;
   toasts.get("server")?.();
   toast({ text: "Reconnected to dwio." });
-  onExternalChange(); // the file may have changed while we were disconnected
+  await onExternalChange(); // the file may have changed while we were disconnected
+  if (dirty && !timer && !saving) scheduleSave(); // unsaved edits: save again, and leave the red "disconnected" state
 });
 events.addEventListener("error", () => {
   if (wasDown) return;
