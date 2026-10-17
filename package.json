@@ -1,11 +1,11 @@
 {
-  "name": "drawio-local",
+  "name": "dwio",
   "version": "0.1.0",
   "description": "Edit local .drawio and .drawio.svg files in the draw.io editor, served fully offline from your terminal.",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "drawio": "dist/cli.js"
+    "dwio": "dist/cli.js"
   },
   "files": [
     "dist",

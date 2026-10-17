@@ -10,7 +10,7 @@ export const DRAWIO_VERSION = "32.4.1";
 const PRUNE = ["WEB-INF", "META-INF", "service-worker.js", "service-worker.js.map", "workbox-05b6c01b.js", "workbox-05b6c01b.js.map"];
 
 export function cacheRoot(): string {
-  const base = process.env.DRAWIO_CACHE_DIR ?? join(process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "drawio-local");
+  const base = process.env.DWIO_CACHE_DIR ?? join(process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "dwio");
   return base;
 }
 

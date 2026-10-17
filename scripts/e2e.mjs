@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import assert from "node:assert/strict";
 
-const file = join(mkdtempSync(join(tmpdir(), "drawio-e2e-")), "e2e.drawio.svg");
+const file = join(mkdtempSync(join(tmpdir(), "dwio-e2e-")), "e2e.drawio.svg");
 const cli = new URL("../src/cli.ts", import.meta.url).pathname;
 const proc = spawn("node", [cli, file, "--no-open", "--json"], { stdio: ["ignore", "pipe", "inherit"] });
 const browser = await chromium.launch();

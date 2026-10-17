@@ -15,7 +15,7 @@ let base: string;
 const H = () => ({ "x-drawio-token": srv.token });
 
 before(async () => {
-  dir = mkdtempSync(join(tmpdir(), "drawio-test-"));
+  dir = mkdtempSync(join(tmpdir(), "dwio-test-"));
   mkdirSync(join(dir, "app"));
   writeFileSync(join(dir, "app", "index.html"), "<html>fake</html>");
   file = join(dir, "d.drawio.svg");

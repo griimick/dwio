@@ -7,12 +7,12 @@ import { DRAWIO_VERSION, install, isInstalled, webappDir } from "./assets.ts";
 import { decompressDiagrams, emptyFile, kindFromPath, toEditorXml } from "./format.ts";
 import { atomicWrite, startServer } from "./server.ts";
 
-const HELP = `drawio – edit local .drawio / .drawio.svg files in the draw.io editor, fully offline
+const HELP = `dwio – edit local .drawio / .drawio.svg files in the draw.io editor, fully offline
 
 Usage:
-  drawio <file>            Open <file> in the editor (created if missing) and keep it in sync
-  drawio xml <file>        Print the diagram as plain, uncompressed mxfile XML (for scripts/agents)
-  drawio setup             Download the draw.io web app into the local cache (one-time, automatic on first use)
+  dwio <file>            Open <file> in the editor (created if missing) and keep it in sync
+  dwio xml <file>        Print the diagram as plain, uncompressed mxfile XML (for scripts/agents)
+  dwio setup             Download the draw.io web app into the local cache (one-time, automatic on first use)
 
 Options:
   --no-open                Do not launch a browser; just print the URL
@@ -89,14 +89,14 @@ async function main(argv: string[]): Promise<number> {
 
   if (first === "xml") {
     const file = rest[0];
-    if (!file) throw new UsageError("usage: drawio xml <file>");
+    if (!file) throw new UsageError("usage: dwio xml <file>");
     const xml = toEditorXml(readFileSync(file, "utf8"), kindFromPath(file));
     if (xml === null) throw new Error(`${file} has no embedded draw.io data`);
     process.stdout.write(decompressDiagrams(xml).replace(/\n?$/, "\n"));
     return 0;
   }
 
-  if (!first) throw new UsageError("missing <file>. Try: drawio diagram.drawio.svg");
+  if (!first) throw new UsageError("missing <file>. Try: dwio diagram.drawio.svg");
   if (rest.length > 0) throw new UsageError(`unexpected extra arguments: ${rest.join(" ")}`);
   const file = resolve(first);
   const kind = kindFromPath(file);
@@ -138,9 +138,9 @@ async function main(argv: string[]): Promise<number> {
 main(process.argv.slice(2)).then(
   (code) => process.exit(code),
   (e: Error) => {
-    log(`drawio: ${e.message}`);
+    log(`dwio: ${e.message}`);
     if (e instanceof UsageError) {
-      log("Run 'drawio --help' for usage.");
+      log("Run 'dwio --help' for usage.");
       process.exit(2);
     }
     process.exit(1);

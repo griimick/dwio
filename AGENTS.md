@@ -1,11 +1,11 @@
 # AGENTS.md
 
-Guidance for AI coding agents (and humans) working on `drawio-local`.
+Guidance for AI coding agents (and humans) working on `dwio`.
 
 ## What this is
-A CLI (`drawio <file>`) that serves the stock draw.io web app from a local, loopback-only HTTP server
+A CLI (`dwio <file>`) that serves the stock draw.io web app from a local, loopback-only HTTP server
 and syncs edits to a `.drawio` or `.drawio.svg` file on disk. No cloud, no accounts; the draw.io
-webapp is downloaded once into `~/.cache/drawio-local` and served offline afterwards.
+webapp is downloaded once into `~/.cache/dwio` and served offline afterwards.
 
 ## Commands
 | Task | Command |
@@ -45,5 +45,5 @@ Requires Node >= 22.18 (native TypeScript type stripping). No runtime dependenci
 
 ## Known gaps / ideas
 - The postMessage bridge (`host.js`) is covered by `scripts/e2e.mjs` (opt-in: needs Playwright, run `npx -p playwright node scripts/e2e.mjs`); run it after touching `host.js` or the server API.
-- `drawio export <file> <out.png|pdf>` for CI rendering.
-- Publish to npm as `drawio-local`.
+- `dwio export <file> <out.png|pdf>` for CI rendering.
+- Publish to npm as `dwio`.
