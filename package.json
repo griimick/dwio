@@ -5,29 +5,19 @@
   "license": "MIT",
   "repository": "github:griimick/dwio",
   "type": "module",
-  "bin": {
-    "dwio": "dist/cli.js"
-  },
-  "files": [
-    "dist",
-    "src/web"
-  ],
-  "engines": {
-    "node": ">=22.18"
-  },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node scripts/postbuild.mjs",
+    "dev": "bun src/cli.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --test \"test/**/*.test.ts\"",
-    "check": "npm run typecheck && npm run test",
-    "dev": "node src/cli.ts",
-    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
-    "build:bin": "bun scripts/build-binaries.ts",
-    "build:bin:all": "bun scripts/build-binaries.ts --all"
+    "test": "bun test",
+    "check": "bun run typecheck && bun run test",
+    "build": "bun scripts/build-binaries.ts",
+    "build:all": "bun scripts/build-binaries.ts --all",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "devDependencies": {
     "@types/bun": "^1.4.3",
-    "@types/node": "^22.0.0",
-    "typescript": "^5.9.0"
-  }
+    "typescript": "^5.9.0",
+    "@types/node": "^22.0.0"
+  },
+  "private": true
 }

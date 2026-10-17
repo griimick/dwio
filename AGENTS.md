@@ -10,16 +10,15 @@ webapp is downloaded once into `~/.cache/dwio` and served offline afterwards.
 ## Commands
 | Task | Command |
 | --- | --- |
-| Install deps | `npm install` |
-| Typecheck + tests (run before every commit) | `npm run check` |
-| Tests only | `npm test` (Node built-in runner, runs `.ts` directly) |
-| Run from source | `node src/cli.ts <file> --no-open` |
-| Build for publishing | `npm run build` → `dist/` |
-| Standalone binary (needs Bun) | `npm run build:bin` (this platform) / `npm run build:bin:all` → `dist-bin/` |
-| Test a compiled binary in a browser | `DWIO_BIN=dist-bin/dwio-linux-x64 npx -p playwright node scripts/e2e.mjs` |
-| Fetch the draw.io webapp | `node src/cli.ts setup` |
+| Install deps (also enables the commit hook) | `bun install` |
+| Typecheck + tests (run before every commit) | `bun run check` |
+| Tests only | `bun test` |
+| Run from source | `bun src/cli.ts <file> --no-open` |
+| Standalone binary, this platform / all five | `bun run build` / `bun run build:all` → `dist-bin/` |
+| Browser round-trip test (opt-in) | see the header of `scripts/e2e.mjs`; set `DWIO_BIN=dist-bin/dwio-linux-x64` to test a compiled binary |
+| Fetch the draw.io webapp | `bun src/cli.ts setup` |
 
-Requires Node >= 22.18 (native TypeScript type stripping). No runtime dependencies — keep it that way.
+Tooling is Bun only (>= 1.2): no Node or npm needed to develop, test or release. Tests use `bun:test`. No runtime dependencies — keep it that way.
 
 ## Layout
 - `src/cli.ts` – default port 3946 (slides up to +20 if busy; explicit `--port` never slides), arg parsing, command dispatch, browser launch. Stdout carries only the URL/JSON; logs go to stderr.
@@ -28,7 +27,7 @@ Requires Node >= 22.18 (native TypeScript type stripping). No runtime dependenci
 - `src/web-assets.ts`, `src/meta.ts` – web page + version as plain modules; `scripts/build-binaries.ts` swaps them for inlined constants when compiling with Bun. Anything that reads files relative to `import.meta.url` must go through such a module or it will break in the binary.
 - `src/assets.ts` – one-time download/cache of the pinned draw.io release (`DRAWIO_VERSION`).
 - `src/web/host.{html,js}` – page that hosts the draw.io iframe and bridges its postMessage JSON protocol to the API. Plain JS, no build step.
-- `test/` – `node:test` suites. `format` is pure; `server` is an integration test with a fake webapp dir.
+- `test/` – `bun:test` suites. `format` is pure; `server` is an integration test with a fake webapp dir.
 
 ## Invariants — do not break
 1. **Loopback by default.** Bind `127.0.0.1` unless the user passes `--host`; every request is checked for Host (IP literal or localhost, never a DNS name), Origin (must equal Host, if present) and the per-run token. Never relax these to ease testing.
@@ -39,7 +38,7 @@ Requires Node >= 22.18 (native TypeScript type stripping). No runtime dependenci
 6. Stdout is for machine-readable output only; human messages go to stderr.
 
 ## Conventions
-- **Conventional Commits** (enforced by `.githooks/commit-msg`; `npm install` wires it up):
+- **Conventional Commits** (enforced by `.githooks/commit-msg`; `bun install` wires it up):
   `type(scope): subject`, types `feat fix docs style refactor perf test build ci chore revert`,
   scopes like `cli server format assets web`. Subject imperative, <= 72 chars. Breaking change: `!` + `BREAKING CHANGE:` footer.
 - Small, focused commits; tests in the same commit as the behavior they cover.
@@ -47,6 +46,5 @@ Requires Node >= 22.18 (native TypeScript type stripping). No runtime dependenci
 - Keep comments for the *why*; match surrounding style.
 
 ## Known gaps / ideas
-- The postMessage bridge (`host.js`) is covered by `scripts/e2e.mjs` (opt-in: needs Playwright, run `npx -p playwright node scripts/e2e.mjs`); run it after touching `host.js` or the server API.
+- The postMessage bridge (`host.js`) is covered by `scripts/e2e.mjs` (opt-in, needs Playwright; see the header of that file); run it after touching `host.js` or the server API.
 - `dwio export <file> <out.png|pdf>` for CI rendering.
-- Publish to npm as `dwio`.

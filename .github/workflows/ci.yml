@@ -8,13 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: npm run check
       - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run check
       - name: Standalone binary builds and runs
         run: |
-          bun scripts/build-binaries.ts
+          bun run build
           ./dist-bin/dwio-linux-x64 --version
           ./dist-bin/dwio-linux-x64 xml examples/flow.drawio.svg | grep -q 'vertex="1"'

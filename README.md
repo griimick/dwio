@@ -122,13 +122,13 @@ Agents that work on the dwio code must read [AGENTS.md](AGENTS.md).
 
 ## Develop dwio
 
-You need Node.js 22.18 or newer. Bun is only necessary to build the program file.
+You need [Bun](https://bun.sh) 1.2 or newer. You do not need Node.js or npm.
 
 ```sh
-npm install          # also turns on the commit message check
-npm run check        # type check and tests
-node src/cli.ts some.drawio --no-open
-npm run build:bin    # builds one program file in dist-bin/ (needs Bun)
+bun install          # also turns on the commit message check
+bun run check        # type check and tests
+bun src/cli.ts some.drawio --no-open
+bun run build        # builds one program file in dist-bin/
 ```
 
 Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org), for example `feat(server): add a new endpoint`.

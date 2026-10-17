@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { deflateRawSync } from "node:zlib";
 import { EMPTY_MXFILE, decompressDiagrams, emptyFile, escapeAttr, extractMxfileFromSvg, kindFromPath, normalizeForDisk, toEditorXml } from "../src/format.ts";

@@ -8,14 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
       - uses: oven-sh/setup-bun@v2
-      - run: npm ci
-      - run: npm run check
+      - run: bun install --frozen-lockfile
+      - run: bun run check
       - name: Tag must match package.json version
-        run: test "v$(node -p 'require("./package.json").version')" = "${GITHUB_REF_NAME}"
-      - run: bun scripts/build-binaries.ts --all
+        run: test "v$(bun -p 'require("./package.json").version')" = "${GITHUB_REF_NAME}"
+      - run: bun run build:all
       - name: Checksums
         run: cd dist-bin && sha256sum dwio-* > SHA256SUMS
       - name: Publish release
