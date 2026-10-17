@@ -15,6 +15,8 @@ webapp is downloaded once into `~/.cache/dwio` and served offline afterwards.
 | Tests only | `npm test` (Node built-in runner, runs `.ts` directly) |
 | Run from source | `node src/cli.ts <file> --no-open` |
 | Build for publishing | `npm run build` → `dist/` |
+| Standalone binary (needs Bun) | `npm run build:bin` (this platform) / `npm run build:bin:all` → `dist-bin/` |
+| Test a compiled binary in a browser | `DWIO_BIN=dist-bin/dwio-linux-x64 npx -p playwright node scripts/e2e.mjs` |
 | Fetch the draw.io webapp | `node src/cli.ts setup` |
 
 Requires Node >= 22.18 (native TypeScript type stripping). No runtime dependencies — keep it that way.
@@ -23,6 +25,7 @@ Requires Node >= 22.18 (native TypeScript type stripping). No runtime dependenci
 - `src/cli.ts` – default port 3946 (slides up to +20 if busy; explicit `--port` never slides), arg parsing, command dispatch, browser launch. Stdout carries only the URL/JSON; logs go to stderr.
 - `src/server.ts` – HTTP server: static draw.io, `/api/file` (GET/PUT), `/api/events` (SSE), dir watcher, atomic writes.
 - `src/format.ts` – pure functions for `.drawio` / `.drawio.svg` (extract/escape `content` attr, inflate compressed pages).
+- `src/web-assets.ts`, `src/meta.ts` – web page + version as plain modules; `scripts/build-binaries.ts` swaps them for inlined constants when compiling with Bun. Anything that reads files relative to `import.meta.url` must go through such a module or it will break in the binary.
 - `src/assets.ts` – one-time download/cache of the pinned draw.io release (`DRAWIO_VERSION`).
 - `src/web/host.{html,js}` – page that hosts the draw.io iframe and bridges its postMessage JSON protocol to the API. Plain JS, no build step.
 - `test/` – `node:test` suites. `format` is pure; `server` is an integration test with a fake webapp dir.

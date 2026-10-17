@@ -21,7 +21,9 @@
     "test": "node --test \"test/**/*.test.ts\"",
     "check": "npm run typecheck && npm run test",
     "dev": "node src/cli.ts",
-    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
+    "build:bin": "bun scripts/build-binaries.ts",
+    "build:bin:all": "bun scripts/build-binaries.ts --all"
   },
   "devDependencies": {
     "@types/bun": "^1.4.3",

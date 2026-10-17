@@ -12,6 +12,17 @@ dwio docs/architecture.drawio.svg     # opens the editor; every change is saved 
 - **Git-friendly.** `.drawio.svg` renders on GitHub and embeds the editable diagram; saved XML is uncompressed so diffs are readable.
 - **Agent-friendly.** `dwio xml <file>` prints plain mxfile XML; `--json` gives machine-readable output; see [AGENTS.md](AGENTS.md).
 
+## Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/griimick/dwio/main/install.sh | sh
+```
+
+This downloads a single self-contained binary (no Node needed) for Linux or macOS, x64 or arm64, verifies its
+checksum and puts it in `~/.local/bin` (`DWIO_INSTALL_DIR` to change, `DWIO_VERSION=v0.1.0` to pin).
+Windows: download `dwio-windows-x64.exe` from the [Releases](https://github.com/griimick/dwio/releases) page.
+The first run fetches the draw.io web app once (~50 MB, cached in `~/.cache/dwio`); after that it is fully offline.
+
 ## Usage
 
 ```
@@ -29,6 +40,7 @@ Requires Node >= 22.18.
 ```sh
 npm install      # also enables the Conventional Commits git hook
 npm run check    # typecheck + tests
+npm run build:bin   # standalone binary for this platform into dist-bin/ (needs Bun)
 node src/cli.ts some.drawio --no-open
 ```
 
@@ -46,3 +58,8 @@ dwio f.drawio --port 44000 --public-port 8080                     # …and tell 
 ## License
 
 [MIT](LICENSE). draw.io is a trademark of JGraph Ltd.; it is downloaded from the upstream Apache-2.0 project at first run and is not redistributed here.
+
+## Releasing
+
+Bump `version` in `package.json`, commit, then `git tag vX.Y.Z && git push --tags`. The `release` workflow
+checks the tag matches `package.json`, runs the checks, builds all five binaries with Bun, and publishes them with `SHA256SUMS` to a GitHub Release.
