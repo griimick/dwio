@@ -31,7 +31,7 @@ Tooling is Bun only (>= 1.2): no Node or npm needed to develop, test or release.
 - `src/web-assets.ts`, `src/meta.ts` – web page + version as plain modules; `scripts/inline-plugin.ts` (used by `build-binaries.ts` and `build-npm.ts`) swaps them for inlined constants when compiling with Bun. Anything that reads files relative to `import.meta.url` must go through such a module or it will break in the binary.
 - `src/export.ts`, `src/cdp.ts`, `src/browser.ts` – `dwio export`: starts the normal loopback server, launches a locally installed Chrome/Chromium/Edge headless, drives it over the DevTools protocol (Node/Bun global `WebSocket`, no dependency), and loads `/export` (`src/web/export.{html,js}`), which asks the draw.io embed iframe to render. PDF is printed from the SVG. Browser profile goes to the OS temp dir and is deleted.
 - `src/assets.ts` – one-time download/cache of the pinned draw.io release (`DRAWIO_VERSION`).
-- `src/web/host.{html,js}` – page that hosts the draw.io iframe and bridges its postMessage JSON protocol to the API. Plain JS, no build step.
+- `src/web/host.{html,js}` – page that hosts the draw.io iframe (full height; file name and sync state live in draw.io's own menu bar via the `title` of `load` and the `status` action; problems show as corner toasts) and bridges its postMessage JSON protocol to the API. Plain JS, no build step. Outside changes: clean tab → `load`, dirty tab → `merge` (never `merge` a clean tab: draw.io's baseline is stale and a reset by git would not apply). `window.__dwio` is a test hook for `scripts/e2e.mjs`.
 - `test/` – `bun:test` suites. `format` is pure; `server` is an integration test with a fake webapp dir.
 
 ## Invariants — do not break

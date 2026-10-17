@@ -12,7 +12,7 @@ This command opens the draw.io editor in your browser. The editor saves each cha
 
 - **It works offline.** dwio runs a small server on your computer. No data leaves your computer.
 - **It saves automatically.** Each change goes to your file within one second.
-- **It reloads changed files.** If another program changes the file, the editor loads the new version. Examples are `git checkout`, a text editor, or an AI agent.
+- **It follows outside changes.** If another program changes the file, the editor shows the new version. Examples are `git checkout`, a text editor, or an AI agent. If you have unsaved edits at that time, dwio merges the outside changes into your open diagram. It does not ask you to choose.
 - **It works with git.** A `.drawio.svg` file shows the picture on GitHub. The same file also holds the diagram data. dwio saves the data as plain XML, so you can read the git diffs.
 - **It works with two file types.** Use `.drawio` (XML) or `.drawio.svg` (SVG picture with the diagram inside).
 
@@ -53,7 +53,7 @@ The first time you run dwio, it downloads the draw.io editor (about 50 MB). It s
 ## Quick start
 
 1. Run `dwio my-diagram.drawio.svg`. If the file does not exist, dwio makes it.
-2. Draw in the browser tab. The status bar at the top shows "saved" after each change.
+2. Draw in the browser tab. The menu bar shows the file name and the state, for example "saved 3:45:11 PM".
 3. Close the browser tab. dwio stops by itself after a few seconds.
 
 To stop dwio at any time, press `Ctrl+C`.
@@ -161,7 +161,9 @@ Agents that work on the dwio code must read [AGENTS.md](AGENTS.md).
 
 **"port … is in use".** Another program uses the port. Use a different port with `--port`.
 
-**The editor shows "file changed on disk".** The file changed while you had unsaved edits. Click **Reload from disk** to load the new file. Click **Overwrite disk** to keep your edits.
+**A message says "Merged changes from disk".** The file changed while you had unsaved edits. dwio combined both. If you and the outside change edited the same shape, the version from the disk wins for that shape. Use Undo (`Ctrl+Z`) in the editor to go back.
+
+**A message says "Lost connection to dwio".** dwio is not running, or the computer went to sleep. The editor keeps your diagram, but it cannot save. Use **File**, **Export as** to keep your work. Then start dwio again.
 
 **"No Chrome, Chromium or Edge browser found".** `dwio export` needs a browser to draw the diagram. Install one, or set `DWIO_BROWSER` to its full path.
 
