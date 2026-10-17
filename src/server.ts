@@ -4,7 +4,7 @@ import { chmod, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { createServer as createHttpServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { isIP } from "node:net";
-import { networkInterfaces } from "node:os";
+import { hostname, networkInterfaces } from "node:os";
 import { basename, dirname, extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { kindFromPath, normalizeForDisk, toEditorXml, type Kind } from "./format.ts";
@@ -105,7 +105,8 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
 
   // DNS rebinding needs a hostname the attacker controls, so only IP literals, localhost and names the user
   // explicitly allowed are accepted as Host.
-  const allowed = new Set((opts.allowHosts ?? []).map((h) => h.toLowerCase()));
+  const ownNames = bindHost === "127.0.0.1" || bindHost === "::1" ? [] : [hostname(), `${hostname()}.local`];
+  const allowed = new Set([...ownNames, ...(opts.allowHosts ?? [])].map((h) => h.toLowerCase()));
   const hostnameOk = (hostname: string): boolean =>
     hostname === "localhost" || isIP(hostname.replace(/^\[|\]$/g, "")) !== 0 || allowed.has(hostname.toLowerCase());
 

@@ -145,3 +145,23 @@ test("--allow-host admits a named host; rejections explain how to fix them", asy
     await s.close();
   }
 });
+
+test("non-loopback bind auto-allows the machine's own hostname", async () => {
+  const { hostname } = await import("node:os");
+  const s = await startServer({ file, webapp: join(dir, "app"), host: "0.0.0.0" });
+  try {
+    const r = await fetch(`http://127.0.0.1:${s.port}/api/file`, { headers: { "x-drawio-token": s.token } });
+    assert.equal(r.status, 200);
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = request({ host: "127.0.0.1", port: s.port, path: "/api/file", headers: { "x-drawio-token": s.token, host: `${hostname()}:${s.port}` } }, (res) => {
+        res.resume();
+        resolve(res.statusCode ?? 0);
+      });
+      req.on("error", reject);
+      req.end();
+    });
+    assert.equal(status, 200);
+  } finally {
+    await s.close();
+  }
+});

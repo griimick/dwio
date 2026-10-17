@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { isIP } from "node:net";
+import { hostname } from "node:os";
 import { parseArgs } from "node:util";
 import { DRAWIO_VERSION, install, isInstalled, webappDir } from "./assets.ts";
 import { decompressDiagrams, emptyFile, kindFromPath, toEditorXml } from "./format.ts";
@@ -146,6 +147,7 @@ async function main(argv: string[]): Promise<number> {
   if (host !== "127.0.0.1" && host !== "::1") {
     log(`WARNING: listening on ${host}. Anyone who can reach this port and has the URL token can read and overwrite ${file}.`);
     for (const u of server.urls) log(`  ${u}`);
+    log(`  http://${hostname()}:${server.port}/?t=${server.token}   (this machine's hostname)`);
   }
   if (!values["no-open"]) openBrowser(server.url);
 

@@ -34,7 +34,7 @@ node src/cli.ts some.drawio --no-open
 
 ### Reaching it by name or through a tunnel
 
-The server rejects any `Host` header that isn't an IP address or `localhost` (this blocks DNS rebinding).
+The server rejects any `Host` header that isn't an IP address, `localhost` or (with a non-loopback `--host`) this machine's own hostname (this blocks DNS rebinding).
 If you get `bad host`, the error says what to pass:
 
 ```sh
