@@ -175,7 +175,9 @@ function startSave(force = false) {
   if (!dirty && !force) return;
   saving = true;
   setStatus("saving…", "saving");
-  if (kind === "svg") post({ action: "export", format: "xmlsvg", xml: latestXml, spin: "Saving" });
+  // Export what the editor holds now. Do not send "xml" here: the editor would load it again, which resets the
+  // view and the undo history on every save. Do not send "spin" either: it covers the editor while you type.
+  if (kind === "svg") post({ action: "export", format: "xmlsvg" });
   else writeFile(latestXml, force);
 }
 

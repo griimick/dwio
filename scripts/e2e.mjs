@@ -4,7 +4,7 @@
 // Set DWIO_BIN to test a compiled binary instead of the source.
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import assert from "node:assert/strict";
@@ -20,6 +20,51 @@ const cli = new URL("../src/cli.ts", import.meta.url).pathname;
 const [cmd, args] = process.env.DWIO_BIN ? [process.env.DWIO_BIN, []] : [process.execPath, [cli]];
 const proc = spawn(cmd, [...args, file, "--no-open", "--json", "--port", "0"], { stdio: ["ignore", "pipe", "inherit"] });
 const browser = await chromium.launch();
+
+/** Zoom and scroll away from the default view, edit, wait for the save: the shape must not move, and undo must still work. */
+async function viewStaysPut(kind) {
+  const d = mkdtempSync(join(tmpdir(), "dwio-view-"));
+  const f = join(d, kind === "svg" ? "v.drawio.svg" : "v.drawio");
+  if (kind === "svg") copyFileSync(new URL("../examples/flow.drawio.svg", import.meta.url).pathname, f);
+  else writeFileSync(f, mx(cell("A", "A0", 40), cell("B", "B0", 240)));
+  const p = spawn(cmd, [...args, f, "--no-open", "--json", "--port", "0"], { stdio: ["ignore", "pipe", "inherit"] });
+  try {
+    const { url } = JSON.parse(await new Promise((r) => p.stdout.once("data", (x) => r(x.toString()))));
+    const pg = await browser.newPage({ viewport: { width: 1200, height: 700 } });
+    await pg.goto(url);
+    await pg.waitForFunction(() => window.__dwio.last.startsWith("loaded"), null, { timeout: 30000 });
+    const fr = pg.frames().find((x) => x.url().includes("/drawio/"));
+    await fr.locator(".geDiagramContainer svg rect").first().waitFor({ timeout: 30000 });
+    await pg.waitForTimeout(1200);
+    const shape = () => fr.evaluate(() => {
+      const r = [...document.querySelectorAll(".geDiagramContainer svg rect[width]")].find((e) => +e.getAttribute("width") > 20).getBoundingClientRect();
+      return { x: r.x, y: r.y, w: r.width };
+    });
+    for (let i = 0; i < 2; i++) await fr.locator('[title^="Zoom In"]').first().click();
+    await pg.waitForTimeout(500);
+    const p0 = await shape();
+    await fr.evaluate(([dx, dy]) => { const c = document.querySelector(".geDiagramContainer"); c.scrollLeft += dx; c.scrollTop += dy; }, [p0.x - 420, p0.y - 220]);
+    await pg.waitForTimeout(500);
+    const before = await shape();
+    await pg.mouse.dblclick(before.x + before.w / 2, before.y + 20);
+    await pg.keyboard.press("Control+A");
+    await pg.keyboard.type("Edited");
+    await pg.mouse.click(850, 600);
+    await pg.waitForFunction(() => window.__dwio.last.startsWith("saved"), null, { timeout: 15000 });
+    await pg.waitForTimeout(1500);
+    const after = await shape();
+    assert.ok(Math.abs(after.x - before.x) < 1 && Math.abs(after.y - before.y) < 1, `${kind}: the view moved by (${after.x - before.x}, ${after.y - before.y}) px after the save`);
+    assert.ok(readFileSync(f, "utf8").includes("Edited"), `${kind}: the edit is in the file`);
+    await pg.keyboard.press("Control+Z");
+    await pg.waitForTimeout(600);
+    assert.ok(!(await fr.locator(".geDiagramContainer").innerText()).includes("Edited"), `${kind}: undo works after a save`);
+    await pg.close();
+  } finally {
+    p.kill();
+    rmSync(d, { recursive: true, force: true });
+  }
+}
+
 try {
   const { url } = JSON.parse(await new Promise((r) => proc.stdout.once("data", (d) => r(d.toString()))));
   const page = await browser.newPage({ viewport: { width: 1200, height: 700 } });
@@ -90,6 +135,9 @@ try {
   assert.ok(merged.includes("A-mine") && merged.includes("B-other"), "both the local and the outside edit survive");
 
   await page.screenshot({ path: join(dir, "page.png") });
+  // Saving must not move the view or wipe the undo history, for both file types.
+  for (const kind of ["drawio", "svg"]) await viewStaysPut(kind);
+
   // A short loss of the connection: red dot, and after it comes back the tab recovers by itself.
   // (An open event stream cannot be cut from outside, so this calls the page's own error and open handlers.)
   await page.evaluate(() => events.dispatchEvent(new Event("error")));
