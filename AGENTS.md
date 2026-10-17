@@ -44,7 +44,6 @@ Requires Node >= 22.18 (native TypeScript type stripping). No runtime dependenci
 - Keep comments for the *why*; match surrounding style.
 
 ## Known gaps / ideas
-- The postMessage bridge (`host.js`) has no automated browser test yet; verify manually after touching it:
-  open a file, add a shape, confirm the file on disk updates, edit the file externally, confirm the editor reloads.
+- The postMessage bridge (`host.js`) is covered by `scripts/e2e.mjs` (opt-in: needs Playwright, run `npx -p playwright node scripts/e2e.mjs`); run it after touching `host.js` or the server API.
 - `drawio export <file> <out.png|pdf>` for CI rendering.
 - Publish to npm as `drawio-local`.
