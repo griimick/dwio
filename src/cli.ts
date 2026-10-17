@@ -9,6 +9,7 @@ import { DRAWIO_VERSION, install, isInstalled, webappDir } from "./assets.ts";
 import { decompressDiagrams, emptyFile, kindFromPath, toEditorXml } from "./format.ts";
 import { colorHelp, styleFor } from "./color.ts";
 import { VERSION } from "./meta.ts";
+import { upgrade } from "./upgrade.ts";
 import { exportDiagram, parseFormat } from "./export.ts";
 import { atomicWrite, startServer } from "./server.ts";
 
@@ -22,6 +23,7 @@ Usage:
   dwio <file>            Open <file> in the editor (created if missing) and keep it in sync
   dwio xml <file>        Print the diagram as plain, uncompressed mxfile XML (for scripts/agents)
   dwio export <file>       Render the diagram to an image: png, svg, pdf or drawio.svg (needs Chrome, Chromium or Edge)
+  dwio upgrade [version]   Install the newest release (or the given version). Alias: update
   dwio setup             Download the draw.io web app into the local cache (one-time, automatic on first use)
 
 Export options (dwio export):
@@ -43,6 +45,7 @@ Options:
                            the URL token is then the only protection and traffic is plain HTTP
   --allow-host <name>      Also accept this hostname in the Host header (repeatable), e.g. a LAN or Tailscale name
   --public-port <n>        Port clients connect to, if it differs from the listening port (SSH -L, Docker)
+  --check                  With upgrade: only say if a newer release exists; change nothing
   --keep-alive             Keep running after the browser tab closes
   --no-create              Fail instead of creating a missing file
   --json                   Machine-readable output: one JSON object on stdout (logs stay on stderr)
@@ -91,6 +94,7 @@ async function main(argv: string[]): Promise<number> {
         "keep-alive": { type: "boolean" },
         "no-create": { type: "boolean" },
         json: { type: "boolean" },
+        check: { type: "boolean" },
         output: { type: "string", short: "o" },
         format: { type: "string" },
         page: { type: "string" },
@@ -126,6 +130,16 @@ async function main(argv: string[]): Promise<number> {
   if (first === "setup") {
     const dir = await install(version, info);
     process.stdout.write(values.json ? JSON.stringify({ webapp: dir, version }) + "\n" : dir + "\n");
+    return 0;
+  }
+
+  if (first === "upgrade" || first === "update") {
+    if (rest.length > 1) throw new UsageError(`unexpected extra arguments: ${rest.slice(1).join(" ")}`);
+    const r = await upgrade({ current: VERSION, target: rest[0], checkOnly: values.check, log: info });
+    if (values.json) process.stdout.write(JSON.stringify(r) + "\n");
+    else if (r.status === "up-to-date") log(`${err.dim("dwio")} ${r.current} ${err.dim("is up to date.")}`);
+    else if (r.status === "available") log(`${err.accent("Update available:")} ${r.current} → ${r.latest}${err.dim(". Run: dwio upgrade")}`);
+    else log(`${err.dim("Upgraded")} dwio ${err.dim(`${r.current} →`)} ${r.latest}`);
     return 0;
   }
 
