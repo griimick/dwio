@@ -30,7 +30,7 @@ bun run check        # type check and tests. Run this before each commit.
 | `src/server.ts` | The local web server, the file API, and the file watcher. |
 | `src/format.ts` | Reads and writes `.drawio` and `.drawio.svg` files. |
 | `src/export.ts`, `src/cdp.ts`, `src/browser.ts` | `dwio export`. It runs a browser without a screen and reads the picture from the draw.io editor. |
-| `src/xml.ts`, `src/diagram.ts` | Reads and edits the cells of a diagram (for agents). It changes only the text that must change. |
+| `src/xml.ts`, `src/diagram.ts`, `src/diagram-file.ts` | Reads and edits the cells of a diagram (for agents), in `.drawio` and `.drawio.svg` files. It changes only the text that must change. |
 | `src/upgrade.ts` | `dwio upgrade`. It downloads a release, checks it, and replaces the running program. |
 | `src/assets.ts` | Downloads and caches the draw.io editor. |
 | `src/web/` | The page that holds the editor and talks to the server. |
