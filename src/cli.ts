@@ -13,6 +13,7 @@ import { upgrade } from "./upgrade.ts";
 import { exportDiagram, parseFormat } from "./export.ts";
 import { registerInstance } from "./instances.ts";
 import { createMcp, serveStdio } from "./mcp.ts";
+import { createProgress } from "./progress.ts";
 import { atomicWrite, startServer } from "./server.ts";
 
 /** "dwio" on a phone keypad. Stable across runs so bookmarks, tunnels and firewall rules keep working. */
@@ -68,6 +69,8 @@ const out = styleFor(process.stdout);
 const log = (msg: string): void => void process.stderr.write(msg + "\n");
 /** Progress and status notes: dim, so the result stands out. */
 const info = (msg: string): void => log(err.dim(msg));
+/** The loader for downloads: a bar on a terminal, nothing otherwise (then the plain lines are printed). */
+const loader = (label: string) => createProgress({ stream: process.stderr, label, style: err });
 
 function openBrowser(url: string): void {
   const custom = process.env.BROWSER;
@@ -133,7 +136,7 @@ async function main(argv: string[]): Promise<number> {
   const [first, ...rest] = positionals;
 
   if (first === "setup") {
-    const dir = await install(version, info);
+    const dir = await install(version, info, loader);
     process.stdout.write(values.json ? JSON.stringify({ webapp: dir, version }) + "\n" : dir + "\n");
     return 0;
   }
@@ -148,7 +151,7 @@ async function main(argv: string[]): Promise<number> {
       browser: values.browser,
       log: info,
       webapp: async () => {
-        if (!isInstalled(version)) await install(version, info);
+        if (!isInstalled(version)) await install(version, info, loader);
         return webappDir(version);
       },
     });
@@ -158,7 +161,7 @@ async function main(argv: string[]): Promise<number> {
 
   if (first === "upgrade" || first === "update") {
     if (rest.length > 1) throw new UsageError(`unexpected extra arguments: ${rest.slice(1).join(" ")}`);
-    const r = await upgrade({ current: VERSION, target: rest[0], checkOnly: values.check, log: info });
+    const r = await upgrade({ current: VERSION, target: rest[0], checkOnly: values.check, log: info, progress: loader });
     if (values.json) process.stdout.write(JSON.stringify(r) + "\n");
     else if (r.status === "up-to-date") log(`${err.dim("dwio")} ${r.current} ${err.dim("is up to date.")}`);
     else if (r.status === "available") log(`${err.accent("Update available:")} ${r.current} → ${r.latest}${err.dim(". Run: dwio upgrade")}`);
@@ -188,7 +191,7 @@ async function main(argv: string[]): Promise<number> {
     };
     const format = values.format === undefined ? undefined : (() => { try { return parseFormat(values.format!); } catch (e) { throw new UsageError((e as Error).message); } })();
     const timeout = numeric("timeout", values.timeout, 1);
-    if (!isInstalled(version)) await install(version, info);
+    if (!isInstalled(version)) await install(version, info, loader);
     const results = await exportDiagram({
       file: resolve(file),
       webapp: webappDir(version),
@@ -237,7 +240,7 @@ async function main(argv: string[]): Promise<number> {
     info(`Created ${file}`);
   }
 
-  if (!isInstalled(version)) await install(version, info);
+  if (!isInstalled(version)) await install(version, info, loader);
 
   let stop: () => void = () => {};
   const done = new Promise<void>((res) => (stop = res));

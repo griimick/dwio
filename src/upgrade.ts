@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { chmodSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { formatBytes, NO_PROGRESS, readWithProgress, type Progress } from "./progress.ts";
 
 /** Where releases live. DWIO_RELEASES_URL replaces it (mirrors, tests). */
 export const RELEASES_URL = "https://github.com/griimick/dwio/releases";
@@ -107,6 +108,8 @@ export interface UpgradeOptions {
   fetchFn?: typeof fetch;
   verify?: (path: string) => boolean;
   log?: (msg: string) => void;
+  /** Makes the loader for the program download (a terminal only). */
+  progress?: (label: string) => Progress;
 }
 
 export type UpgradeResult =
@@ -114,10 +117,10 @@ export type UpgradeResult =
   | { status: "available"; current: string; latest: string }
   | { status: "upgraded"; current: string; latest: string };
 
-async function download(url: string, fetchFn: typeof fetch): Promise<Uint8Array> {
+async function download(url: string, fetchFn: typeof fetch, progress?: Progress): Promise<Uint8Array> {
   const res = await fetchFn(url, { redirect: "follow" });
   if (!res.ok) throw new Error(`download failed: ${res.status} ${res.statusText} (${url})`);
-  return new Uint8Array(await res.arrayBuffer());
+  return readWithProgress(res, progress);
 }
 
 export async function upgrade(o: UpgradeOptions): Promise<UpgradeResult> {
@@ -144,8 +147,16 @@ export async function upgrade(o: UpgradeOptions): Promise<UpgradeResult> {
   }
 
   const asset = assetName(o.platform, o.arch);
-  log(`Downloading ${asset} ${tag}…`);
-  const [data, sums] = await Promise.all([download(`${base}/download/${tag}/${asset}`, fetchFn), download(`${base}/download/${tag}/SHA256SUMS`, fetchFn)]);
+  const progress = o.progress?.(`Downloading ${asset} ${tag}`) ?? NO_PROGRESS;
+  if (!progress.enabled) log(`Downloading ${asset} ${tag}…`);
+  let data: Uint8Array, sums: Uint8Array;
+  try {
+    [data, sums] = await Promise.all([download(`${base}/download/${tag}/${asset}`, fetchFn, progress), download(`${base}/download/${tag}/SHA256SUMS`, fetchFn)]);
+  } catch (e) {
+    progress.finish(); // put the cursor back
+    throw e;
+  }
+  progress.finish(`Downloaded ${asset} ${tag} (${formatBytes(data.length)})`);
   const want = checksumFor(new TextDecoder().decode(sums), asset);
   if (!want) throw new Error(`SHA256SUMS has no entry for ${asset}; not installing`);
   if (sha256(data) !== want) throw new Error(`checksum mismatch for ${asset}; not installing`);

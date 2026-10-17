@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
+import { formatBytes, NO_PROGRESS, readWithProgress, type Progress } from "./progress.ts";
 
 /** Pinned upstream draw.io release whose static webapp we serve. Override with --drawio-version. */
 export const DRAWIO_VERSION = "32.4.1";
@@ -30,12 +31,13 @@ export function isInstalled(version = DRAWIO_VERSION): boolean {
 }
 
 /** Downloads and unpacks the draw.io webapp once; afterwards the tool never touches the network. */
-export async function install(version = DRAWIO_VERSION, log: (msg: string) => void = () => {}): Promise<string> {
+export async function install(version = DRAWIO_VERSION, log: (msg: string) => void = () => {}, makeProgress?: (label: string) => Progress): Promise<string> {
   const dest = webappDir(version);
   if (isInstalled(version)) return dest;
 
   const url = `https://github.com/jgraph/drawio/archive/refs/tags/v${version}.tar.gz`;
-  log(`Downloading draw.io v${version} (one-time, ~50 MB)…`);
+  const progress = makeProgress?.(`Downloading draw.io v${version}`) ?? NO_PROGRESS;
+  if (!progress.enabled) log(`Downloading draw.io v${version} (one-time, ~50 MB)…`);
   const res = await fetch(url, { redirect: "follow" });
   if (!res.ok) throw new Error(`download failed: ${res.status} ${res.statusText} (${url})`);
 
@@ -43,7 +45,15 @@ export async function install(version = DRAWIO_VERSION, log: (msg: string) => vo
   const tarball = join(tmpdir(), `drawio-${version}-${process.pid}.tar.gz`);
   const staging = `${dest}.partial-${process.pid}`;
   try {
-    writeFileSync(tarball, Buffer.from(await res.arrayBuffer()));
+    let data: Uint8Array;
+    try {
+      data = await readWithProgress(res, progress);
+    } catch (e) {
+      progress.finish(); // put the cursor back
+      throw e;
+    }
+    progress.finish(`Downloaded draw.io v${version} (${formatBytes(data.length)})`);
+    writeFileSync(tarball, data);
     rmSync(staging, { recursive: true, force: true });
     mkdirSync(staging, { recursive: true });
     log("Unpacking…");
