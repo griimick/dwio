@@ -65,6 +65,7 @@ To stop dwio at any time, press `Ctrl+C`.
 | `dwio <file>` | Opens the file in the editor and keeps the file in sync. |
 | `dwio xml <file>` | Prints the diagram as plain XML. Use it in scripts. |
 | `dwio export <file>` | Makes a picture of the diagram: PNG, SVG, PDF, or `.drawio.svg`. See [Export a picture](#export-a-picture). |
+| `dwio upgrade [version]` | Installs the newest release, or the version that you name. See [Upgrade dwio](#upgrade-dwio). |
 | `dwio setup` | Downloads the draw.io editor. |
 | `dwio --help` | Shows all options. |
 | `dwio --version` | Shows the dwio version and the draw.io version. |
@@ -75,6 +76,7 @@ To stop dwio at any time, press `Ctrl+C`.
 | --- | --- |
 | `--no-open` | Does not open a browser. dwio prints the URL only. |
 | `--port <n>` | Uses this port. dwio stops with an error if the port is busy. |
+| `--check` | With `upgrade`: says if a newer release exists. Changes nothing. |
 | `--keep-alive` | Keeps dwio running after you close the browser tab. |
 | `--no-create` | Stops with an error if the file does not exist. |
 | `--json` | Prints one line of JSON instead of the URL. |
@@ -84,6 +86,22 @@ To stop dwio at any time, press `Ctrl+C`.
 | `--drawio-version <v>` | Uses this version of the draw.io editor. |
 
 The default port is `3946`. This number is "dwio" on a phone keypad. If port 3946 is busy, dwio tries the next ports, up to 3966. To change the default port, set the environment variable `DWIO_PORT`.
+
+## Upgrade dwio
+
+```sh
+dwio upgrade            # installs the newest release
+dwio upgrade --check    # says if a newer release exists, and changes nothing
+dwio upgrade 0.1.0      # installs a specific version
+```
+
+`dwio update` does the same as `dwio upgrade`. Use `--json` to get the result as JSON.
+
+The command downloads the program file for your system from the [Releases page](https://github.com/griimick/dwio/releases). It checks the checksum and runs the new file one time. Then it replaces itself. If a step fails, your old program stays in place.
+
+This works for the program that `install.sh` installs. If you use `npx`, you always get the newest version. If you installed with npm, run `npm install -g @griimick/dwio` to upgrade.
+
+dwio uses the network only when you run `dwio upgrade` or `dwio setup`, and the first time that it needs the draw.io editor. To use a mirror of the Releases page, set `DWIO_RELEASES_URL`.
 
 ## Export a picture
 
@@ -166,6 +184,8 @@ Agents that work on the dwio code must read [AGENTS.md](AGENTS.md).
 **A message says "Lost connection to dwio".** dwio is not running, or the computer went to sleep. The editor keeps your diagram, but it cannot save. Use **File**, **Export as** to keep your work. Then start dwio again.
 
 **"No Chrome, Chromium or Edge browser found".** `dwio export` needs a browser to draw the diagram. Install one, or set `DWIO_BROWSER` to its full path.
+
+**"cannot write to ..." when you upgrade.** dwio has no permission to change its own folder. Install again with `install.sh` and set `DWIO_INSTALL_DIR` to a folder that you own, or run `dwio upgrade` with the right permission.
 
 **The colors are wrong or you do not want colors.** dwio uses colors only when the output goes to a terminal. Output that you pipe or redirect has no colors. To turn colors off, set `NO_COLOR=1`. To force colors on, set `FORCE_COLOR=1`. The URL or JSON that dwio writes to standard output never has colors.
 
