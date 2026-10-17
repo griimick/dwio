@@ -1,6 +1,6 @@
 {
   "name": "@griimick/dwio",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Edit local .drawio and .drawio.svg files in the draw.io editor, served fully offline from your terminal.",
   "license": "MIT",
   "repository": {
