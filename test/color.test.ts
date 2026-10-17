@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DRAWIO_VERSION } from "../src/assets.ts";
 import { colorEnabled, colorHelp, makeStyle } from "../src/color.ts";
 
 describe("colorEnabled", () => {
@@ -66,8 +67,12 @@ describe("cli output", () => {
 describe("editor URL on stdout", () => {
   const firstLine = async (env: Record<string, string>): Promise<string> => {
     const dir = mkdtempSync(join(tmpdir(), "dwio-color-"));
+    // A fake draw.io editor in a private cache, so the test never downloads anything.
+    const cache = join(dir, "cache", `webapp-${DRAWIO_VERSION}`);
+    mkdirSync(cache, { recursive: true });
+    writeFileSync(join(cache, "index.html"), "<html></html>");
     const child = spawn(process.execPath, [new URL("../src/cli.ts", import.meta.url).pathname, join(dir, "t.drawio"), "--no-open", "--port", "0"], {
-      env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...env },
+      env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", DWIO_CACHE_DIR: join(dir, "cache"), ...env },
       stdio: ["ignore", "pipe", "ignore"],
     });
     try {
