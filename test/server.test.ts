@@ -106,3 +106,18 @@ test("SSE announces external changes but not our own writes", async () => {
   await reader.cancel();
   await pump.catch(() => {});
 });
+
+test("--host 0.0.0.0: reachable by IP, still rejects hostnames and bad origins, token still required", async () => {
+  const open = await startServer({ file, webapp: join(dir, "app"), host: "0.0.0.0" });
+  try {
+    assert.ok(open.urls.length > 0 && open.urls.every((u) => u.includes(open.token)));
+    const ip = open.urls[0]!.match(/^http:\/\/([^/]+)\//)![1]!;
+    const ok = await fetch(`http://${ip}/api/file`, { headers: { "x-drawio-token": open.token } });
+    assert.equal(ok.status, 200);
+    assert.equal((await fetch(`http://${ip}/api/file`)).status, 401);
+    const bad = await fetch(`http://${ip}/api/file`, { headers: { "x-drawio-token": open.token, origin: "https://evil.example" } });
+    assert.equal(bad.status, 403);
+  } finally {
+    await open.close();
+  }
+});

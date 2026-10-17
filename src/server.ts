@@ -3,6 +3,8 @@ import { createReadStream, existsSync, realpathSync, statSync, watch, type FSWat
 import { chmod, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { createServer as createHttpServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { isIP } from "node:net";
+import { networkInterfaces } from "node:os";
 import { basename, dirname, extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { kindFromPath, normalizeForDisk, toEditorXml, type Kind } from "./format.ts";
@@ -36,6 +38,8 @@ export interface ServerOptions {
   /** Directory containing the unpacked draw.io webapp. */
   webapp: string;
   port?: number;
+  /** Interface to bind. Defaults to loopback; anything else exposes the editor (and the file) to the network. */
+  host?: string;
   token?: string;
   /** Called once every browser tab has been gone for `graceMs`. */
   onIdle?: () => void;
@@ -44,6 +48,8 @@ export interface ServerOptions {
 
 export interface RunningServer {
   url: string;
+  /** Every address the server is reachable on (just loopback unless --host is used). */
+  urls: string[];
   port: number;
   token: string;
   close(): Promise<void>;
@@ -73,7 +79,7 @@ export async function atomicWrite(path: string, content: string): Promise<void> 
 
 export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   const token = opts.token ?? randomBytes(16).toString("hex");
-  const bindHost = "127.0.0.1"; // loopback only, by design
+  const bindHost = opts.host ?? "127.0.0.1";
   const graceMs = opts.graceMs ?? 5000;
   const kind: Kind = kindFromPath(opts.file);
   const name = basename(opts.file);
@@ -93,15 +99,18 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     res.end(JSON.stringify(body));
   };
 
+  // DNS rebinding needs a hostname the attacker controls, so only IP literals and localhost are accepted as Host.
+  const hostnameOk = (hostname: string): boolean => hostname === "localhost" || isIP(hostname.replace(/^\[|\]$/g, "")) !== 0;
+
   const hostOk = (req: IncomingMessage): boolean => {
-    const h = req.headers.host ?? "";
-    return h === `127.0.0.1:${port}` || h === `localhost:${port}` || h === `[::1]:${port}`;
+    const m = /^(.+):(\d+)$/.exec(req.headers.host ?? "");
+    return m !== null && Number(m[2]) === port && hostnameOk(m[1]!);
   };
 
+  // Browsers always send Origin on cross-origin writes; it must match the Host we were addressed by.
   const originOk = (req: IncomingMessage): boolean => {
     const o = req.headers.origin;
-    if (!o) return true;
-    return o === `http://127.0.0.1:${port}` || o === `http://localhost:${port}` || o === `http://[::1]:${port}`;
+    return !o || o === `http://${req.headers.host}`;
   };
 
   const tokenOk = (req: IncomingMessage, url: URL): boolean => {
@@ -239,6 +248,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     port,
     token,
     url: `http://127.0.0.1:${port}/?t=${token}`,
+    urls: reachableAddresses(bindHost).map((a) => `http://${a.includes(":") ? `[${a}]` : a}:${port}/?t=${token}`),
     close: () =>
       new Promise<void>((resolve) => {
         clearTimeout(debounce);
@@ -249,4 +259,10 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         server.closeAllConnections();
       }),
   };
+}
+
+function reachableAddresses(bindHost: string): string[] {
+  if (bindHost !== "0.0.0.0" && bindHost !== "::") return [bindHost];
+  const all = Object.values(networkInterfaces()).flatMap((l) => l ?? []);
+  return all.filter((i) => i.family === "IPv4" || bindHost === "::").map((i) => i.address);
 }

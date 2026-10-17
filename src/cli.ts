@@ -2,6 +2,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { isIP } from "node:net";
 import { parseArgs } from "node:util";
 import { DRAWIO_VERSION, install, isInstalled, webappDir } from "./assets.ts";
 import { decompressDiagrams, emptyFile, kindFromPath, toEditorXml } from "./format.ts";
@@ -17,6 +18,8 @@ Usage:
 Options:
   --no-open                Do not launch a browser; just print the URL
   --port <n>               Listen on a fixed port (default: random free port)
+  --host <addr>            Bind address (default: 127.0.0.1). Use 0.0.0.0 to reach it from other machines;
+                           the URL token is then the only protection and traffic is plain HTTP
   --keep-alive             Keep running after the browser tab closes
   --no-create              Fail instead of creating a missing file
   --json                   Machine-readable output: one JSON object on stdout (logs stay on stderr)
@@ -55,6 +58,7 @@ async function main(argv: string[]): Promise<number> {
       options: {
         "no-open": { type: "boolean" },
         port: { type: "string" },
+        host: { type: "string" },
         "keep-alive": { type: "boolean" },
         "no-create": { type: "boolean" },
         json: { type: "boolean" },
@@ -101,15 +105,17 @@ async function main(argv: string[]): Promise<number> {
   const file = resolve(first);
   const kind = kindFromPath(file);
 
+  const host = values.host ?? "127.0.0.1";
+  if (isIP(host) === 0) throw new UsageError(`invalid --host (expected an IP address): ${host}`);
+  const port = values.port === undefined ? 0 : Number(values.port);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) throw new UsageError(`invalid --port: ${values.port}`);
+
   if (!existsSync(file)) {
     if (values["no-create"]) throw new Error(`${file} does not exist`);
     if (!existsSync(dirname(file))) throw new Error(`directory ${dirname(file)} does not exist`);
     await atomicWrite(file, emptyFile(kind));
     log(`Created ${file}`);
   }
-
-  const port = values.port === undefined ? 0 : Number(values.port);
-  if (!Number.isInteger(port) || port < 0 || port > 65535) throw new UsageError(`invalid --port: ${values.port}`);
 
   if (!isInstalled(version)) await install(version, log);
 
@@ -119,14 +125,19 @@ async function main(argv: string[]): Promise<number> {
     file,
     webapp: webappDir(version),
     port,
+    host,
     onIdle: values["keep-alive"] ? undefined : () => {
       log("Editor closed; shutting down.");
       stop();
     },
   });
 
-  process.stdout.write(values.json ? JSON.stringify({ url: server.url, port: server.port, file, kind, pid: process.pid }) + "\n" : server.url + "\n");
+  process.stdout.write(values.json ? JSON.stringify({ url: server.url, urls: server.urls, port: server.port, file, kind, pid: process.pid }) + "\n" : server.url + "\n");
   log(`Editing ${file} (${kind}). Ctrl+C to stop.`);
+  if (host !== "127.0.0.1" && host !== "::1") {
+    log(`WARNING: listening on ${host}. Anyone who can reach this port and has the URL token can read and overwrite ${file}.`);
+    for (const u of server.urls) log(`  ${u}`);
+  }
   if (!values["no-open"]) openBrowser(server.url);
 
   for (const sig of ["SIGINT", "SIGTERM"] as const) process.once(sig, stop);

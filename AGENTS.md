@@ -28,7 +28,7 @@ Requires Node >= 22.18 (native TypeScript type stripping). No runtime dependenci
 - `test/` – `node:test` suites. `format` is pure; `server` is an integration test with a fake webapp dir.
 
 ## Invariants — do not break
-1. **Loopback only.** Bind `127.0.0.1`; every request is checked for Host, Origin (if present) and the per-run token. Never relax this to ease testing.
+1. **Loopback by default.** Bind `127.0.0.1` unless the user passes `--host`; every request is checked for Host (IP literal or localhost, never a DNS name), Origin (must equal Host, if present) and the per-run token. Never relax these to ease testing.
 2. **Only ever write the one file given on the command line**, via `atomicWrite` (temp file + rename in the same dir).
 3. **Own writes must not echo** as external changes (server tracks `lastHash`). Keep the SSE test green.
 4. **SVG saves come from draw.io's `xmlsvg` export**, never hand-built, so rendering and embedded data stay consistent.
