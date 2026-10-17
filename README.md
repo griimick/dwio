@@ -37,9 +37,9 @@ Make sure `~/.local/bin` is in your `PATH`.
 If you have Node.js 18.3 or newer, you can run dwio with `npx`. You do not install anything.
 
 ```sh
-npx dwio diagram.drawio.svg
-pnpm dlx dwio diagram.drawio.svg
-bunx dwio diagram.drawio.svg
+npx @griimick/dwio diagram.drawio.svg
+pnpm dlx @griimick/dwio diagram.drawio.svg
+bunx @griimick/dwio diagram.drawio.svg
 ```
 
 To install in a different folder, set `DWIO_INSTALL_DIR`. To install a specific version, set `DWIO_VERSION`, for example `DWIO_VERSION=v0.1.0`.
@@ -154,9 +154,11 @@ The `release` workflow checks that the tag matches `package.json`. It runs the t
 
 Do these steps one time:
 
-1. Log in with `npm login`. Run `npm publish --access public` in the project folder. This makes the package `dwio` on npm.
+1. Log in with `npm login`. Run `npm publish --access public` in the project folder. This makes the package `@griimick/dwio` on npm. The name `dwio` without a scope is not possible, because npm blocks names that are too close to `swig` and `twig`. The command that the package installs is still `dwio`.
 2. On npmjs.com, open the package settings. Under **Trusted publisher**, add GitHub Actions with owner `griimick`, repository `dwio`, and workflow `release.yml`.
 3. On GitHub, open **Settings**, **Secrets and variables**, **Actions**, **Variables**. Add the variable `NPM_PUBLISH` with the value `true`.
+
+To install the command for all projects, run `npm install -g @griimick/dwio`.
 
 After this, each release tag also publishes the package to npm. The package has a provenance mark. The `npm` job in `release.yml` does the work.
 
