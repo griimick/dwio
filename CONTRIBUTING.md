@@ -22,6 +22,51 @@ bun run check        # type check and tests. Run this before each commit.
 | `bun run build:all` | Builds the program files for all five systems. |
 | `bun run build:npm` | Builds `dist/cli.js`, the file that `npx` runs. Test it with `node dist/cli.js`. |
 
+## Run your changes
+
+You can run your code in two ways.
+
+**1. From the repository folder.** Use this for quick checks.
+
+```sh
+bun run dev -- /full/path/to/diagram.drawio.svg --no-open
+```
+
+`bun run dev` runs inside the repository folder. A short file name is looked up there, so give the full path of a file in another folder.
+
+**2. From any folder, with a second command.** Use this to open your own diagrams, and to test `dwio mcp` with an agent. Make a link with a name that is not `dwio`:
+
+```sh
+chmod +x src/cli.ts     # one time, if the file is not executable
+ln -sf "$PWD/src/cli.ts" ~/.local/bin/dwio-dev
+```
+
+Now `dwio-dev` runs the code of the branch that you have checked out. You do not need to build. Change branches with `git switch`, and `dwio-dev` follows.
+
+- Keep the name `dwio` for the released program. The install script and `dwio upgrade` replace `~/.local/bin/dwio`, and they remove a link with that name.
+- `dwio-dev` needs `bun` in your `PATH`. A login shell has it. Some other programs, such as editors and agent launchers, do not.
+- You can run `dwio` and `dwio-dev` at the same time. The second one uses the next free port.
+- To see which one you run, look for a new command. For example, `dwio-dev --help | grep mcp` shows a line only if the code has `mcp`. The two commands can print the same version number.
+- `dwio-dev upgrade` refuses to run. It replaces only the released program.
+- To remove the link, run `rm ~/.local/bin/dwio-dev`.
+
+To test an agent with your code, use a separate name, and remove it when you finish:
+
+```sh
+claude mcp add dwio-dev -- dwio-dev mcp
+claude mcp remove dwio-dev
+```
+
+To try a branch while you keep working on another one, make a second copy of the repository with `git worktree`, and make a link to it with a different name (for example `dwio-pr`):
+
+```sh
+git worktree add ~/workspace/dwio-pr feat/some-branch
+(cd ~/workspace/dwio-pr && bun install)
+ln -sf ~/workspace/dwio-pr/src/cli.ts ~/.local/bin/dwio-pr
+```
+
+A running dwio saves into the file that it has open. Use copies of the example diagrams for experiments, for example `cp examples/flow.drawio /tmp/try.drawio`.
+
 ## Project layout
 
 | Path | Content |
