@@ -20,7 +20,7 @@ dwio xml <file>      print uncompressed mxfile XML
 dwio setup           pre-download the draw.io web app
 ```
 
-Flags: `--no-open`, `--port <n>`, `--host <addr>` (e.g. `0.0.0.0` to reach it from another machine; the URL token is then the only protection, over plain HTTP), `--keep-alive`, `--no-create`, `--json`, `--drawio-version <v>`. See `dwio --help`.
+Flags: `--no-open`, `--port <n>`, `--allow-host <name>`, `--public-port <n>` (for hostnames and tunnels, see below), `--host <addr>` (e.g. `0.0.0.0` to reach it from another machine; the URL token is then the only protection, over plain HTTP), `--keep-alive`, `--no-create`, `--json`, `--drawio-version <v>`. See `dwio --help`.
 
 Requires Node >= 22.18.
 
@@ -30,4 +30,15 @@ Requires Node >= 22.18.
 npm install      # also enables the Conventional Commits git hook
 npm run check    # typecheck + tests
 node src/cli.ts some.drawio --no-open
+```
+
+### Reaching it by name or through a tunnel
+
+The server rejects any `Host` header that isn't an IP address or `localhost` (this blocks DNS rebinding).
+If you get `bad host`, the error says what to pass:
+
+```sh
+dwio f.drawio --host 0.0.0.0 --allow-host mybox.tailnet.ts.net   # open it by name
+ssh -L 8080:127.0.0.1:44000 server                                # tunnel to a different local port…
+dwio f.drawio --port 44000 --public-port 8080                     # …and tell the server about it
 ```

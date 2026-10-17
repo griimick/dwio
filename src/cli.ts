@@ -20,6 +20,8 @@ Options:
   --port <n>               Listen on a fixed port (default: random free port)
   --host <addr>            Bind address (default: 127.0.0.1). Use 0.0.0.0 to reach it from other machines;
                            the URL token is then the only protection and traffic is plain HTTP
+  --allow-host <name>      Also accept this hostname in the Host header (repeatable), e.g. a LAN or Tailscale name
+  --public-port <n>        Port clients connect to, if it differs from the listening port (SSH -L, Docker)
   --keep-alive             Keep running after the browser tab closes
   --no-create              Fail instead of creating a missing file
   --json                   Machine-readable output: one JSON object on stdout (logs stay on stderr)
@@ -59,6 +61,8 @@ async function main(argv: string[]): Promise<number> {
         "no-open": { type: "boolean" },
         port: { type: "string" },
         host: { type: "string" },
+        "allow-host": { type: "string", multiple: true },
+        "public-port": { type: "string" },
         "keep-alive": { type: "boolean" },
         "no-create": { type: "boolean" },
         json: { type: "boolean" },
@@ -110,6 +114,9 @@ async function main(argv: string[]): Promise<number> {
   const port = values.port === undefined ? 0 : Number(values.port);
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new UsageError(`invalid --port: ${values.port}`);
 
+  const publicPort = values["public-port"] === undefined ? undefined : Number(values["public-port"]);
+  if (publicPort !== undefined && (!Number.isInteger(publicPort) || publicPort < 1 || publicPort > 65535)) throw new UsageError(`invalid --public-port: ${values["public-port"]}`);
+
   if (!existsSync(file)) {
     if (values["no-create"]) throw new Error(`${file} does not exist`);
     if (!existsSync(dirname(file))) throw new Error(`directory ${dirname(file)} does not exist`);
@@ -126,6 +133,8 @@ async function main(argv: string[]): Promise<number> {
     webapp: webappDir(version),
     port,
     host,
+    allowHosts: values["allow-host"],
+    publicPort,
     onIdle: values["keep-alive"] ? undefined : () => {
       log("Editor closed; shutting down.");
       stop();

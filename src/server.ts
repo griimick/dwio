@@ -40,6 +40,10 @@ export interface ServerOptions {
   port?: number;
   /** Interface to bind. Defaults to loopback; anything else exposes the editor (and the file) to the network. */
   host?: string;
+  /** Extra hostnames accepted in the Host header (e.g. a LAN or MagicDNS name). Only add names you control. */
+  allowHosts?: string[];
+  /** Port clients use to reach us when it differs from the bound one (SSH -L, Docker port mapping). */
+  publicPort?: number;
   token?: string;
   /** Called once every browser tab has been gone for `graceMs`. */
   onIdle?: () => void;
@@ -99,12 +103,23 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     res.end(JSON.stringify(body));
   };
 
-  // DNS rebinding needs a hostname the attacker controls, so only IP literals and localhost are accepted as Host.
-  const hostnameOk = (hostname: string): boolean => hostname === "localhost" || isIP(hostname.replace(/^\[|\]$/g, "")) !== 0;
+  // DNS rebinding needs a hostname the attacker controls, so only IP literals, localhost and names the user
+  // explicitly allowed are accepted as Host.
+  const allowed = new Set((opts.allowHosts ?? []).map((h) => h.toLowerCase()));
+  const hostnameOk = (hostname: string): boolean =>
+    hostname === "localhost" || isIP(hostname.replace(/^\[|\]$/g, "")) !== 0 || allowed.has(hostname.toLowerCase());
 
   const hostOk = (req: IncomingMessage): boolean => {
     const m = /^(.+):(\d+)$/.exec(req.headers.host ?? "");
-    return m !== null && Number(m[2]) === port && hostnameOk(m[1]!);
+    return m !== null && Number(m[2]) === (opts.publicPort ?? port) && hostnameOk(m[1]!);
+  };
+
+  const hostProblem = (req: IncomingMessage): string => {
+    const h = req.headers.host ?? "(none)";
+    const m = /^(.+):(\d+)$/.exec(h);
+    const want = opts.publicPort ?? port;
+    if (m && Number(m[2]) !== want) return `bad host: got port ${m[2]}, server expects ${want}. Behind a tunnel or port mapping? Use --public-port ${m[2]}`;
+    return `bad host: "${h}" is not an IP address or localhost. To allow this name use --allow-host ${m ? m[1] : h}`;
   };
 
   // Browsers always send Origin on cross-origin writes; it must match the Host we were addressed by.
@@ -155,7 +170,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
     const path = url.pathname;
 
-    if (!hostOk(req)) return json(res, 403, { error: "bad host" });
+    if (!hostOk(req)) return json(res, 403, { error: hostProblem(req) });
     if (!originOk(req)) return json(res, 403, { error: "bad origin" });
 
     res.setHeader("x-content-type-options", "nosniff");

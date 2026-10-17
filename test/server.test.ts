@@ -121,3 +121,27 @@ test("--host 0.0.0.0: reachable by IP, still rejects hostnames and bad origins, 
     await open.close();
   }
 });
+
+test("--allow-host admits a named host; rejections explain how to fix them", async () => {
+  const s = await startServer({ file, webapp: join(dir, "app"), allowHosts: ["box.lan"] });
+  const get = (host: string) =>
+    new Promise<{ status: number; body: string }>((resolve, reject) => {
+      const req = request({ host: "127.0.0.1", port: s.port, path: "/api/file", headers: { "x-drawio-token": s.token, host } }, (res) => {
+        let body = "";
+        res.on("data", (c) => (body += c));
+        res.on("end", () => resolve({ status: res.statusCode ?? 0, body }));
+      });
+      req.on("error", reject);
+      req.end();
+    });
+  try {
+    assert.equal((await get(`box.lan:${s.port}`)).status, 200);
+    const name = await get(`other.lan:${s.port}`);
+    assert.equal(name.status, 403);
+    assert.match(name.body, /--allow-host other\.lan/);
+    const port = await get("127.0.0.1:9");
+    assert.match(port.body, /--public-port 9/);
+  } finally {
+    await s.close();
+  }
+});
