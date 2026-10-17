@@ -167,6 +167,8 @@ Agents that work on the dwio code must read [AGENTS.md](AGENTS.md).
 
 **"No Chrome, Chromium or Edge browser found".** `dwio export` needs a browser to draw the diagram. Install one, or set `DWIO_BROWSER` to its full path.
 
+**The colors are wrong or you do not want colors.** dwio uses colors only when the output goes to a terminal. Output that you pipe or redirect has no colors. To turn colors off, set `NO_COLOR=1`. To force colors on, set `FORCE_COLOR=1`. The URL or JSON that dwio writes to standard output never has colors.
+
 **The browser does not open.** Use `--no-open`, and open the printed URL yourself. On Linux, dwio uses `xdg-open`. To use a different browser, set the `BROWSER` environment variable.
 
 ## Change dwio
