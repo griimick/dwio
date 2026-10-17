@@ -1,0 +1,29 @@
+{
+  "name": "drawio-local",
+  "version": "0.1.0",
+  "description": "Edit local .drawio and .drawio.svg files in the draw.io editor, served fully offline from your terminal.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "drawio": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "src/web"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/postbuild.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "check": "npm run typecheck && npm run test",
+    "dev": "node src/cli.ts",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0"
+  }
+}

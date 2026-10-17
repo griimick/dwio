@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Enforce Conventional Commits (https://www.conventionalcommits.org). Enabled via core.hooksPath (set by `npm install`).
+first_line=$(head -n1 "$1")
+re='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._-]+\))?!?: .{1,72}$'
+case "$first_line" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0 ;;
+esac
+if ! [[ "$first_line" =~ $re ]]; then
+  echo "commit-msg: subject must follow Conventional Commits, e.g. 'feat(server): add SSE endpoint' (max 72 chars)" >&2
+  echo "  got: $first_line" >&2
+  exit 1
+fi
