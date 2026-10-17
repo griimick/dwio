@@ -6,7 +6,7 @@
 
 **A message says "Merged changes from disk".** The file changed while you had unsaved edits. dwio combined both. If you and the outside change edited the same shape, the version from the disk wins for that shape. Use Undo (`Ctrl+Z`) in the editor to go back.
 
-**A message says "Lost connection to dwio".** dwio is not running, or the computer went to sleep. The editor keeps your diagram, but it cannot save. Use **File**, **Export as** to keep your work. Then start dwio again.
+**A message says "Lost connection to dwio".** dwio is not running, or the computer went to sleep. The editor keeps your diagram, but it cannot save. Use **File**, **Export as** to keep your work. Then start dwio again. The icon of the browser tab shows a red dot until the connection is back.
 
 **"No Chrome, Chromium or Edge browser found".** `dwio export` needs a browser to draw the diagram. Install one, or set `DWIO_BROWSER` to its full path.
 
