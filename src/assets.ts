@@ -9,9 +9,16 @@ export const DRAWIO_VERSION = "32.4.1";
 /** Upstream parts that are never needed for local editing (server config, offline service worker). */
 const PRUNE = ["WEB-INF", "META-INF", "service-worker.js", "service-worker.js.map", "workbox-05b6c01b.js", "workbox-05b6c01b.js.map"];
 
-export function cacheRoot(): string {
-  const base = process.env.DWIO_CACHE_DIR ?? join(process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "dwio");
-  return base;
+/**
+ * Where the draw.io web app is cached. Order: DWIO_CACHE_DIR, then $XDG_CACHE_HOME, then the platform's
+ * normal cache folder (~/.cache on Linux, ~/Library/Caches on macOS, %LOCALAPPDATA% on Windows).
+ */
+export function cacheRoot(env: Record<string, string | undefined> = process.env, platform: string = process.platform, home: string = homedir()): string {
+  if (env.DWIO_CACHE_DIR) return env.DWIO_CACHE_DIR;
+  if (env.XDG_CACHE_HOME) return join(env.XDG_CACHE_HOME, "dwio");
+  if (platform === "darwin") return join(home, "Library", "Caches", "dwio");
+  if (platform === "win32") return join(env.LOCALAPPDATA ?? join(home, "AppData", "Local"), "dwio", "Cache");
+  return join(home, ".cache", "dwio");
 }
 
 export function webappDir(version = DRAWIO_VERSION): string {
