@@ -31,6 +31,7 @@ bun run check        # type check and tests. Run this before each commit.
 | `src/format.ts` | Reads and writes `.drawio` and `.drawio.svg` files. |
 | `src/export.ts`, `src/cdp.ts`, `src/browser.ts` | `dwio export`. It runs a browser without a screen and reads the picture from the draw.io editor. |
 | `src/xml.ts`, `src/diagram.ts`, `src/diagram-file.ts` | Reads and edits the cells of a diagram (for agents), in `.drawio` and `.drawio.svg` files. It changes only the text that must change. |
+| `src/mcp.ts` | `dwio mcp`. The MCP server that lets an agent read and edit diagrams. It must write protocol messages only to standard output. |
 | `src/upgrade.ts` | `dwio upgrade`. It downloads a release, checks it, and replaces the running program. |
 | `src/assets.ts` | Downloads and caches the draw.io editor. |
 | `src/web/` | The page that holds the editor and talks to the server. |
