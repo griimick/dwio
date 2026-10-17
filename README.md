@@ -42,6 +42,8 @@ pnpm dlx @griimick/dwio diagram.drawio.svg
 bunx @griimick/dwio diagram.drawio.svg
 ```
 
+To install the command for all projects, run `npm install -g @griimick/dwio`.
+
 To install in a different folder, set `DWIO_INSTALL_DIR`. To install a specific version, set `DWIO_VERSION`, for example `DWIO_VERSION=v0.1.0`.
 
 On Windows, download `dwio-windows-x64.exe` from the [Releases page](https://github.com/griimick/dwio/releases).
@@ -130,37 +132,9 @@ Agents that work on the dwio code must read [AGENTS.md](AGENTS.md).
 
 **The browser does not open.** Use `--no-open`, and open the printed URL yourself. On Linux, dwio uses `xdg-open`. To use a different browser, set the `BROWSER` environment variable.
 
-## Develop dwio
+## Change dwio
 
-You need [Bun](https://bun.sh) 1.2 or newer. You do not need Node.js or npm.
-
-```sh
-bun install          # also turns on the commit message check
-bun run check        # type check and tests
-bun src/cli.ts some.drawio --no-open
-bun run build        # builds one program file in dist-bin/
-```
-
-Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org), for example `feat(server): add a new endpoint`.
-
-### Make a release
-
-1. Change `version` in `package.json`. Commit the change.
-2. Run `git tag vX.Y.Z` and then `git push origin vX.Y.Z`.
-
-The `release` workflow checks that the tag matches `package.json`. It runs the tests, builds the program files for all five systems, and publishes them with a `SHA256SUMS` file on the Releases page.
-
-### Publish to npm
-
-Do these steps one time:
-
-1. Log in with `npm login`. Run `npm publish --access public` in the project folder. This makes the package `@griimick/dwio` on npm. The name `dwio` without a scope is not possible, because npm blocks names that are too close to `swig` and `twig`. The command that the package installs is still `dwio`.
-2. On npmjs.com, open the package settings. Under **Trusted publisher**, add GitHub Actions with owner `griimick`, repository `dwio`, and workflow `release.yml`.
-3. On GitHub, open **Settings**, **Secrets and variables**, **Actions**, **Variables**. Add the variable `NPM_PUBLISH` with the value `true`.
-
-To install the command for all projects, run `npm install -g @griimick/dwio`.
-
-After this, each release tag also publishes the package to npm. The package has a provenance mark. The `npm` job in `release.yml` does the work.
+To change the code, read [CONTRIBUTING.md](CONTRIBUTING.md). Maintainers find the release steps in [docs/releasing.md](docs/releasing.md).
 
 ## Disclaimer about AI-generated content
 

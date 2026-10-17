@@ -8,6 +8,8 @@ and syncs edits to a `.drawio` or `.drawio.svg` file on disk. No cloud, no accou
 webapp is downloaded once into `~/.cache/dwio` and served offline afterwards.
 
 ## Commands
+The full command list is in [CONTRIBUTING.md](CONTRIBUTING.md); release steps are in [docs/releasing.md](docs/releasing.md). Short version:
+
 | Task | Command |
 | --- | --- |
 | Install deps (also enables the commit hook) | `bun install` |
