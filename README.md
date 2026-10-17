@@ -42,3 +42,7 @@ dwio f.drawio --host 0.0.0.0 --allow-host mybox.tailnet.ts.net   # open it by na
 ssh -L 8080:127.0.0.1:44000 server                                # tunnel to a different local port…
 dwio f.drawio --port 44000 --public-port 8080                     # …and tell the server about it
 ```
+
+## License
+
+[MIT](LICENSE). draw.io is a trademark of JGraph Ltd.; it is downloaded from the upstream Apache-2.0 project at first run and is not redistributed here.

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Edit local .drawio and .drawio.svg files in the draw.io editor, served fully offline from your terminal.",
   "license": "MIT",
+  "repository": "github:griimick/dwio",
   "type": "module",
   "bin": {
     "dwio": "dist/cli.js"
