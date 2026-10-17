@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { isIP } from "node:net";
 import { hostname } from "node:os";
@@ -11,6 +11,7 @@ import { colorHelp, styleFor } from "./color.ts";
 import { VERSION } from "./meta.ts";
 import { upgrade } from "./upgrade.ts";
 import { exportDiagram, parseFormat } from "./export.ts";
+import { createMcp, serveStdio } from "./mcp.ts";
 import { atomicWrite, startServer } from "./server.ts";
 
 /** "dwio" on a phone keypad. Stable across runs so bookmarks, tunnels and firewall rules keep working. */
@@ -23,6 +24,7 @@ Usage:
   dwio <file>            Open <file> in the editor (created if missing) and keep it in sync
   dwio xml <file>        Print the diagram as plain, uncompressed mxfile XML (for scripts/agents)
   dwio export <file>       Render the diagram to an image: png, svg, pdf or drawio.svg (needs Chrome, Chromium or Edge)
+  dwio mcp                 Run as an MCP server on stdin/stdout, so an agent can read, draw and edit diagrams
   dwio upgrade [version]   Install the newest release (or the given version). Alias: update
   dwio setup             Download the draw.io web app into the local cache (one-time, automatic on first use)
 
@@ -46,6 +48,7 @@ Options:
   --allow-host <name>      Also accept this hostname in the Host header (repeatable), e.g. a LAN or Tailscale name
   --public-port <n>        Port clients connect to, if it differs from the listening port (SSH -L, Docker)
   --check                  With upgrade: only say if a newer release exists; change nothing
+  --root <folder>          With mcp: the folder the agent may use (default: the current folder). Repeat to allow more
   --keep-alive             Keep running after the browser tab closes
   --no-create              Fail instead of creating a missing file
   --json                   Machine-readable output: one JSON object on stdout (logs stay on stderr)
@@ -91,6 +94,7 @@ async function main(argv: string[]): Promise<number> {
         host: { type: "string" },
         "allow-host": { type: "string", multiple: true },
         "public-port": { type: "string" },
+        root: { type: "string", multiple: true },
         "keep-alive": { type: "boolean" },
         "no-create": { type: "boolean" },
         json: { type: "boolean" },
@@ -130,6 +134,24 @@ async function main(argv: string[]): Promise<number> {
   if (first === "setup") {
     const dir = await install(version, info);
     process.stdout.write(values.json ? JSON.stringify({ webapp: dir, version }) + "\n" : dir + "\n");
+    return 0;
+  }
+
+  if (first === "mcp") {
+    if (rest.length) throw new UsageError(`unexpected extra arguments: ${rest.join(" ")}`);
+    const roots = (values.root ?? []).map((r) => resolve(r));
+    for (const r of roots) if (!existsSync(r) || !statSync(r).isDirectory()) throw new UsageError(`--root ${r} is not a folder`);
+    const mcp = createMcp({
+      version: VERSION,
+      roots,
+      browser: values.browser,
+      log: info,
+      webapp: async () => {
+        if (!isInstalled(version)) await install(version, info);
+        return webappDir(version);
+      },
+    });
+    await serveStdio(mcp); // stdout carries protocol messages only
     return 0;
   }
 

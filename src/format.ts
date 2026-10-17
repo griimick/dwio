@@ -85,3 +85,14 @@ export function listPages(mxfile: string): PageInfo[] {
   }
   return pages;
 }
+
+/** Puts new mxfile XML into the `content` attribute of a draw.io SVG. The picture is not changed, so it may be out of date. */
+export function embedMxfile(svg: string, mxfile: string): string {
+  const root = /<svg\b[^>]*>/i.exec(svg);
+  if (!root) throw new Error("not an SVG file");
+  const tag = root[0];
+  const value = `content="${escapeAttr(mxfile)}"`;
+  const has = /(\s)content\s*=\s*(?:"[^"]*"|'[^']*')/i;
+  const next = has.test(tag) ? tag.replace(has, (_, ws: string) => ws + value) : tag.replace(/\s*\/?>$/, (end) => ` ${value}${end}`);
+  return svg.slice(0, root.index) + next + svg.slice(root.index + tag.length);
+}
