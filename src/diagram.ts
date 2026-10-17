@@ -426,3 +426,46 @@ export function editMxfile(xml: string, ops: Op[]): EditResult {
   parseXml(src); // the result must still be well-formed
   return { xml: src, changes };
 }
+
+// ---------- input from agents ----------------------------------------------------------------------------
+
+const NUMBER_FIELDS = ["x", "y", "width", "height"] as const;
+const STRING_FIELDS = ["id", "parent", "label", "style", "source", "target"] as const;
+const OP_NAMES = ["add_vertex", "add_edge", "update", "delete"];
+
+/** Checks operations that come from a language model (wrong types are common) and converts what is safe to convert. */
+export function parseOps(input: unknown): Op[] {
+  if (!Array.isArray(input)) throw new EditError('"ops" must be a list of operations');
+  if (input.length === 0) throw new EditError('"ops" is empty; give at least one operation');
+  return input.map((raw, i) => {
+    const fail = (m: string): never => {
+      throw new EditError(m, i);
+    };
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return fail("each operation must be an object");
+    const o = { ...(raw as Record<string, unknown>) };
+    if (typeof o.op !== "string" || !OP_NAMES.includes(o.op)) return fail(`"op" must be one of ${OP_NAMES.join(", ")}`);
+    for (const k of NUMBER_FIELDS) {
+      if (o[k] === undefined || o[k] === null) delete o[k];
+      else if (typeof o[k] === "string" && o[k] !== "" && Number.isFinite(Number(o[k]))) o[k] = Number(o[k]);
+      else if (typeof o[k] !== "number" || !Number.isFinite(o[k])) fail(`"${k}" must be a number`);
+    }
+    for (const k of STRING_FIELDS) {
+      if (o[k] === undefined || o[k] === null) delete o[k];
+      else if (typeof o[k] === "number") o[k] = String(o[k]); // an id such as 7 is fine
+      else if (typeof o[k] !== "string") fail(`"${k}" must be text`);
+    }
+    if (o.page !== undefined && o.page !== null && typeof o.page !== "string" && typeof o.page !== "number") fail('"page" must be a page name, id or number');
+    if (o.page === null) delete o.page;
+    if (o.style_set !== undefined) {
+      const ss = o.style_set as Record<string, unknown>;
+      if (!ss || typeof ss !== "object" || Array.isArray(ss) || Object.values(ss).some((v) => v !== null && typeof v !== "string" && typeof v !== "number")) fail('"style_set" must be an object of style keys; a value of null removes a key');
+    }
+    if (o.points !== undefined) {
+      const pts = o.points as unknown;
+      if (!Array.isArray(pts) || pts.some((p) => !p || typeof (p as { x: unknown }).x !== "number" || typeof (p as { y: unknown }).y !== "number")) fail('"points" must be a list of {x, y} numbers');
+    }
+    if ((o.op === "update" || o.op === "delete") && typeof o.id !== "string") fail(`"${o.op}" needs an "id"`);
+    if (o.op === "add_edge" && (typeof o.source !== "string" || typeof o.target !== "string")) fail('"add_edge" needs "source" and "target" ids');
+    return o as unknown as Op;
+  });
+}

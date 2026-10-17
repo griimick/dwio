@@ -11,6 +11,7 @@ import { colorHelp, styleFor } from "./color.ts";
 import { VERSION } from "./meta.ts";
 import { upgrade } from "./upgrade.ts";
 import { exportDiagram, parseFormat } from "./export.ts";
+import { createMcp, serveStdio } from "./mcp.ts";
 import { atomicWrite, startServer } from "./server.ts";
 
 /** "dwio" on a phone keypad. Stable across runs so bookmarks, tunnels and firewall rules keep working. */
@@ -23,6 +24,7 @@ Usage:
   dwio <file>            Open <file> in the editor (created if missing) and keep it in sync
   dwio xml <file>        Print the diagram as plain, uncompressed mxfile XML (for scripts/agents)
   dwio export <file>       Render the diagram to an image: png, svg, pdf or drawio.svg (needs Chrome, Chromium or Edge)
+  dwio mcp                 Run as an MCP server on stdin/stdout, so an agent can read, draw and edit diagrams
   dwio upgrade [version]   Install the newest release (or the given version). Alias: update
   dwio setup             Download the draw.io web app into the local cache (one-time, automatic on first use)
 
@@ -130,6 +132,21 @@ async function main(argv: string[]): Promise<number> {
   if (first === "setup") {
     const dir = await install(version, info);
     process.stdout.write(values.json ? JSON.stringify({ webapp: dir, version }) + "\n" : dir + "\n");
+    return 0;
+  }
+
+  if (first === "mcp") {
+    if (rest.length) throw new UsageError(`unexpected extra arguments: ${rest.join(" ")}`);
+    const mcp = createMcp({
+      version: VERSION,
+      browser: values.browser,
+      log: info,
+      webapp: async () => {
+        if (!isInstalled(version)) await install(version, info);
+        return webappDir(version);
+      },
+    });
+    await serveStdio(mcp); // stdout carries protocol messages only
     return 0;
   }
 
