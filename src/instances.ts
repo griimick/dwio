@@ -31,6 +31,9 @@ export function runDir(env: Record<string, string | undefined> = process.env, pl
   if (env.DWIO_RUN_DIR) return env.DWIO_RUN_DIR;
   if (platform === "win32") return join(env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"), "dwio", "run");
   if (env.XDG_RUNTIME_DIR) return join(env.XDG_RUNTIME_DIR, "dwio"); // private to the user, and cleared at logout
+  // Some agents (Codex) start `dwio mcp` without XDG_RUNTIME_DIR. systemd always puts it at /run/user/<uid>, so
+  // use that path when it exists. Both sides then agree without sharing an environment.
+  if (platform === "linux" && uid !== undefined && existsSync(`/run/user/${uid}`)) return `/run/user/${uid}/dwio`;
   if (platform === "darwin") return join(tmpdir(), `dwio-${uid ?? "user"}`); // $TMPDIR is per user on macOS
   return join(env.XDG_STATE_HOME ?? join(homedir(), ".local", "state"), "dwio", "run");
 }

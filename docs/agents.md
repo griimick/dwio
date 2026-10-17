@@ -45,7 +45,7 @@ If you use Claude Code with a claude.ai account, the draw.io connector can be th
 
 ### How the agent finds the open diagram
 
-When you run `dwio <file>`, dwio writes a small instance file about itself, and it removes the file when it stops. `dwio mcp` reads these files. On Linux the folder is `$XDG_RUNTIME_DIR/dwio`. On macOS it is in the per-user temporary folder. On Windows it is `%LOCALAPPDATA%\dwio\run`.
+When you run `dwio <file>`, dwio writes a small instance file about itself, and it removes the file when it stops. `dwio mcp` reads these files. On Linux the folder is `$XDG_RUNTIME_DIR/dwio`. If that variable is missing (some agents, such as Codex, remove it), dwio uses `/run/user/<uid>/dwio`, which is the same folder. On macOS it is in the per-user temporary folder. On Windows it is `%LOCALAPPDATA%\dwio\run`.
 
 The folder and the files are private to your user account. dwio checks this each time. It does not use a folder that is a link, that belongs to another user, or that others can open. A file is trusted only if its program is running and answers a random question correctly. The answer needs a secret that is inside the file, and the secret is never sent. A leftover file after a crash is removed. The secret is not the token of the editor page, and it opens no route that reads or writes your diagram. Programs that run as your own user can read these files, as they can read your other files.
 
