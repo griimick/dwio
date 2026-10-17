@@ -64,3 +64,24 @@ export function normalizeForDisk(text: string, kind: Kind): string {
   if (kind === "drawio") return decompressDiagrams(text);
   return text.replace(/(<svg\b[^>]*?\scontent\s*=\s*)"([^"]*)"/i, (_, pre: string, raw: string) => `${pre}"${escapeAttr(decompressDiagrams(unescapeXml(raw)))}"`);
 }
+
+export interface PageInfo {
+  /** 1-based position in the file. */
+  index: number;
+  id: string;
+  name: string;
+}
+
+/** Lists the pages of an mxfile. Works for compressed and plain diagrams because only the tag attributes are read. */
+export function listPages(mxfile: string): PageInfo[] {
+  const pages: PageInfo[] = [];
+  for (const m of mxfile.matchAll(/<diagram\b([^>]*)>/g)) {
+    const attrs = m[1] ?? "";
+    const get = (k: string): string => {
+      const a = new RegExp(`\\s${k}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`).exec(` ${attrs}`);
+      return unescapeXml(a?.[1] ?? a?.[2] ?? "");
+    };
+    pages.push({ index: pages.length + 1, id: get("id"), name: get("name") || `Page-${pages.length + 1}` });
+  }
+  return pages;
+}

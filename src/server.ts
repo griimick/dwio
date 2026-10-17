@@ -6,7 +6,7 @@ import type { AddressInfo } from "node:net";
 import { isIP } from "node:net";
 import { hostname, networkInterfaces } from "node:os";
 import { basename, dirname, extname, join, normalize, sep } from "node:path";
-import { hostHtml, hostJs } from "./web-assets.ts";
+import { exportHtml, exportJs, hostHtml, hostJs } from "./web-assets.ts";
 import { kindFromPath, normalizeForDisk, toEditorXml, type Kind } from "./format.ts";
 
 const MAX_BODY = 64 * 1024 * 1024;
@@ -29,6 +29,14 @@ const MIME: Record<string, string> = {
   ".ttf": "font/ttf",
   ".wasm": "application/wasm",
   ".map": "application/json",
+};
+
+/** Pages and scripts served from memory (inlined in the standalone build). The HTML pages need the token. */
+const PAGES: Record<string, { ext: string; body: string; needsToken: boolean }> = {
+  "/": { ext: ".html", body: hostHtml, needsToken: true },
+  "/host.js": { ext: ".js", body: hostJs, needsToken: false },
+  "/export": { ext: ".html", body: exportHtml, needsToken: true },
+  "/export.js": { ext: ".js", body: exportJs, needsToken: false },
 };
 
 export interface ServerOptions {
@@ -178,11 +186,11 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
 
     if (path.startsWith("/drawio/")) return serveFile(res, opts.webapp, decodeURIComponent(path.slice("/drawio/".length)));
 
-    if (req.method === "GET" && (path === "/" || path === "/host.js")) {
-      if (!tokenOk(req, url) && path === "/") return json(res, 401, { error: "missing or bad token" });
-      const [type, body] = path === "/" ? [MIME[".html"]!, hostHtml] : [MIME[".js"]!, hostJs];
-      res.writeHead(200, { "content-type": type, "cache-control": "no-store" });
-      return void res.end(body);
+    const page = PAGES[path];
+    if (req.method === "GET" && page) {
+      if (page.needsToken && !tokenOk(req, url)) return json(res, 401, { error: "missing or bad token" });
+      res.writeHead(200, { "content-type": MIME[page.ext]!, "cache-control": "no-store" });
+      return void res.end(page.body);
     }
 
     if (path.startsWith("/api/")) {

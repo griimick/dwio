@@ -8,6 +8,7 @@ import { parseArgs } from "node:util";
 import { DRAWIO_VERSION, install, isInstalled, webappDir } from "./assets.ts";
 import { decompressDiagrams, emptyFile, kindFromPath, toEditorXml } from "./format.ts";
 import { VERSION } from "./meta.ts";
+import { exportDiagram, parseFormat } from "./export.ts";
 import { atomicWrite, startServer } from "./server.ts";
 
 /** "dwio" on a phone keypad. Stable across runs so bookmarks, tunnels and firewall rules keep working. */
@@ -19,7 +20,20 @@ const HELP = `dwio – edit local .drawio / .drawio.svg files in the draw.io edi
 Usage:
   dwio <file>            Open <file> in the editor (created if missing) and keep it in sync
   dwio xml <file>        Print the diagram as plain, uncompressed mxfile XML (for scripts/agents)
+  dwio export <file>       Render the diagram to an image: png, svg, pdf or drawio.svg (needs Chrome, Chromium or Edge)
   dwio setup             Download the draw.io web app into the local cache (one-time, automatic on first use)
+
+Export options (dwio export):
+  -o, --output <path>      Output file ("-" for stdout). The extension sets the format; default: <file>.png
+  --format <f>             png | svg | pdf | drawio.svg (overrides the extension)
+  --page <n|name>          Export this page (1-based number or exact name). Default: page 1
+  --all-pages              Export every page as <name>-<n>.<ext>
+  --scale <x>              Zoom factor (default: 2 for png, 1 otherwise)
+  --border <px>            Space around the drawing (default: 10)
+  --background <color>     Background color, e.g. "#ffffff" (png and pdf default to white)
+  --transparent            Transparent background (png)
+  --browser <path>         Chrome/Chromium/Edge to use (or set DWIO_BROWSER)
+  --timeout <seconds>      Give up after this long (default: 60)
 
 Options:
   --no-open                Do not launch a browser; just print the URL
@@ -72,6 +86,16 @@ async function main(argv: string[]): Promise<number> {
         "keep-alive": { type: "boolean" },
         "no-create": { type: "boolean" },
         json: { type: "boolean" },
+        output: { type: "string", short: "o" },
+        format: { type: "string" },
+        page: { type: "string" },
+        "all-pages": { type: "boolean" },
+        scale: { type: "string" },
+        border: { type: "string" },
+        background: { type: "string" },
+        transparent: { type: "boolean" },
+        browser: { type: "string" },
+        timeout: { type: "string" },
         "drawio-version": { type: "string" },
         help: { type: "boolean", short: "h" },
         version: { type: "boolean", short: "v" },
@@ -106,6 +130,45 @@ async function main(argv: string[]): Promise<number> {
     const xml = toEditorXml(readFileSync(file, "utf8"), kindFromPath(file));
     if (xml === null) throw new Error(`${file} has no embedded draw.io data`);
     process.stdout.write(decompressDiagrams(xml).replace(/\n?$/, "\n"));
+    return 0;
+  }
+
+  if (first === "export") {
+    const file = rest[0];
+    if (!file) throw new UsageError("usage: dwio export <file> [-o out.png]");
+    if (rest.length > 1) throw new UsageError(`unexpected extra arguments: ${rest.slice(1).join(" ")}`);
+    if (!existsSync(file)) throw new Error(`${file} does not exist`);
+    const numeric = (name: string, raw: string | undefined, min: number): number | undefined => {
+      if (raw === undefined) return undefined;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < min) throw new UsageError(`invalid --${name}: ${raw}`);
+      return n;
+    };
+    const format = values.format === undefined ? undefined : (() => { try { return parseFormat(values.format!); } catch (e) { throw new UsageError((e as Error).message); } })();
+    const timeout = numeric("timeout", values.timeout, 1);
+    if (!isInstalled(version)) await install(version, log);
+    const results = await exportDiagram({
+      file: resolve(file),
+      webapp: webappDir(version),
+      out: values.output === undefined || values.output === "-" ? values.output : resolve(values.output),
+      format,
+      page: values.page,
+      allPages: values["all-pages"],
+      scale: numeric("scale", values.scale, 0.01),
+      border: numeric("border", values.border, 0),
+      background: values.background,
+      transparent: values.transparent,
+      browser: values.browser,
+      timeoutMs: timeout === undefined ? undefined : timeout * 1000,
+      log,
+    });
+    if (results.length === 1 && results[0]!.data) {
+      process.stdout.write(results[0]!.data);
+    } else if (values.json) {
+      process.stdout.write(JSON.stringify({ files: results.map(({ data: _d, ...r }) => r) }) + "\n");
+    } else {
+      for (const r of results) process.stdout.write(`${r.path}\n`);
+    }
     return 0;
   }
 

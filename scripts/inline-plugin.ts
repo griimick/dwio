@@ -11,8 +11,9 @@ export const inlineAssets: Bun.BunPlugin = {
   setup(build) {
     build.onLoad({ filter: /src[\\/]web-assets\.ts$/ }, () => ({
       loader: "js",
-      contents: `export const hostHtml = ${JSON.stringify(readFileSync(join(root, "src/web/host.html"), "utf8"))};
-export const hostJs = ${JSON.stringify(readFileSync(join(root, "src/web/host.js"), "utf8"))};`,
+      contents: ["host.html", "host.js", "export.html", "export.js"]
+        .map((f) => `export const ${f.replace(/\.(\w)/, (_, c) => c.toUpperCase())} = ${JSON.stringify(readFileSync(join(root, "src/web", f), "utf8"))};`)
+        .join("\n"),
     }));
     build.onLoad({ filter: /src[\\/]meta\.ts$/ }, () => ({
       loader: "js",
