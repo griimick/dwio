@@ -53,7 +53,7 @@ The first time you run dwio, it downloads the draw.io editor (about 50 MB) and s
 
 ## Quick start
 
-1. Run `dwio my-diagram.drawio.svg`. If the file does not exist, dwio makes it.
+1. Run `dwio my-diagram.drawio.svg`. To start a new diagram, add `--create`: dwio makes the file if it does not exist.
 2. Draw in the browser tab. The menu bar shows the file name and the state, for example "saved 3:45:11 PM".
    The icon of the browser tab shows a blue dot while there are unsaved edits, and a red dot if something is wrong.
 3. Close the browser tab. dwio stops by itself after a few seconds.

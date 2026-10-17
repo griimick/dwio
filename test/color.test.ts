@@ -76,7 +76,7 @@ describe("editor URL on stdout", () => {
     const cache = join(dir, "cache", `webapp-${DRAWIO_VERSION}`);
     mkdirSync(cache, { recursive: true });
     writeFileSync(join(cache, "index.html"), "<html></html>");
-    const child = spawn(process.execPath, [new URL("../src/cli.ts", import.meta.url).pathname, join(dir, "t.drawio"), "--no-open", "--port", "0"], {
+    const child = spawn(process.execPath, [new URL("../src/cli.ts", import.meta.url).pathname, join(dir, "t.drawio"), "--no-open", "--create", "--port", "0"], {
       env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", DWIO_CACHE_DIR: join(dir, "cache"), ...env },
       stdio: ["ignore", "pipe", "ignore"],
     });

@@ -10,7 +10,7 @@ Details that you need only now and then. To see every option at any time, run `d
 | `--port <n>` | Uses this port. dwio stops with an error if the port is busy. |
 | `--check` | With `upgrade`: says if a newer release exists. Changes nothing. |
 | `--keep-alive` | Keeps dwio running after you close the browser tab. |
-| `--no-create` | Stops with an error if the file does not exist. |
+| `--create` | Creates an empty file if it does not exist. Without it, a missing file is an error. |
 | `--json` | Prints one line of JSON instead of the URL. |
 | `--host <address>` | Listens on this address. See [Use dwio from another computer](remote-access.md). |
 | `--allow-host <name>` | Accepts this host name. You can use this option more than once. |

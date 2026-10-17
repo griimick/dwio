@@ -18,7 +18,7 @@ writeFileSync(file, mx(cell("A", "A0", 40), cell("B", "B0", 240)));
 
 const cli = new URL("../src/cli.ts", import.meta.url).pathname;
 const [cmd, args] = process.env.DWIO_BIN ? [process.env.DWIO_BIN, []] : [process.execPath, [cli]];
-const proc = spawn(cmd, [...args, file, "--no-open", "--json", "--port", "0"], { stdio: ["ignore", "pipe", "inherit"] });
+const proc = spawn(cmd, [...args, file, "--no-open", "--create", "--json", "--port", "0"], { stdio: ["ignore", "pipe", "inherit"] });
 const browser = await chromium.launch();
 
 /** Zoom and scroll away from the default view, edit, wait for the save: the shape must not move, and undo must still work. */
@@ -27,7 +27,7 @@ async function viewStaysPut(kind) {
   const f = join(d, kind === "svg" ? "v.drawio.svg" : "v.drawio");
   if (kind === "svg") copyFileSync(new URL("../examples/flow.drawio.svg", import.meta.url).pathname, f);
   else writeFileSync(f, mx(cell("A", "A0", 40), cell("B", "B0", 240)));
-  const p = spawn(cmd, [...args, f, "--no-open", "--json", "--port", "0"], { stdio: ["ignore", "pipe", "inherit"] });
+  const p = spawn(cmd, [...args, f, "--no-open", "--create", "--json", "--port", "0"], { stdio: ["ignore", "pipe", "inherit"] });
   try {
     const { url } = JSON.parse(await new Promise((r) => p.stdout.once("data", (x) => r(x.toString()))));
     const pg = await browser.newPage({ viewport: { width: 1200, height: 700 } });
@@ -71,7 +71,7 @@ async function viewSurvivesOutsideChange() {
   const f = join(d, "o.drawio");
   const far = (on) => (on ? cell("Z1", "far up-left", -1500, 0).replace('y="40"', 'y="-900"') + cell("Z2", "far down-right", 3000, 0).replace('y="40"', 'y="2200"') : "");
   writeFileSync(f, mx(cell("A", "A0", 40), cell("B", "B0", 240)));
-  const p = spawn(cmd, [...args, f, "--no-open", "--json", "--port", "0"], { stdio: ["ignore", "pipe", "inherit"] });
+  const p = spawn(cmd, [...args, f, "--no-open", "--create", "--json", "--port", "0"], { stdio: ["ignore", "pipe", "inherit"] });
   try {
     const { url } = JSON.parse(await new Promise((r) => p.stdout.once("data", (x) => r(x.toString()))));
     const pg = await browser.newPage({ viewport: { width: 1200, height: 700 } });

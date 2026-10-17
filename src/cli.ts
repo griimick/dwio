@@ -55,7 +55,7 @@ Options:
   --root <folder>          With mcp: the folder the agent may use (default: the current folder). Repeat to allow more
   --new-token              Renew the secret behind the URL token (the token and port are otherwise the same on every run for a file)
   --keep-alive             Keep running after the browser tab closes
-  --no-create              Fail instead of creating a missing file
+  --create                 Create the file (empty) if it does not exist; otherwise a missing file is an error
   --json                   Machine-readable output: one JSON object on stdout (logs stay on stderr)
   --drawio-version <v>     Upstream draw.io release to use (default: ${DRAWIO_VERSION})
   -h, --help               Show this help
@@ -103,7 +103,7 @@ async function main(argv: string[]): Promise<number> {
         "public-port": { type: "string" },
         root: { type: "string", multiple: true },
         "keep-alive": { type: "boolean" },
-        "no-create": { type: "boolean" },
+        create: { type: "boolean" },
         json: { type: "boolean" },
         "new-token": { type: "boolean" },
         check: { type: "boolean" },
@@ -238,7 +238,7 @@ async function main(argv: string[]): Promise<number> {
   if (publicPort !== undefined && (!Number.isInteger(publicPort) || publicPort < 1 || publicPort > 65535)) throw new UsageError(`invalid --public-port: ${values["public-port"]}`);
 
   if (!existsSync(file)) {
-    if (values["no-create"]) throw new Error(`${file} does not exist`);
+    if (!values.create) throw new Error(`${file} does not exist (use --create to start a new diagram)`);
     if (!existsSync(dirname(file))) throw new Error(`directory ${dirname(file)} does not exist`);
     await atomicWrite(file, emptyFile(kind));
     info(`Created ${file}`);

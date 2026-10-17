@@ -191,7 +191,7 @@ describe("a real dwio process", () => {
     writeFileSync(join(cache, "index.html"), "<html></html>");
     const file = join(dir, "t.drawio");
     const run = join(dir, "run");
-    const child = spawn(process.execPath, [new URL("../src/cli.ts", import.meta.url).pathname, file, "--no-open", "--port", "0"], {
+    const child = spawn(process.execPath, [new URL("../src/cli.ts", import.meta.url).pathname, file, "--no-open", "--create", "--port", "0"], {
       env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", DWIO_CACHE_DIR: join(dir, "cache"), DWIO_RUN_DIR: run },
       stdio: ["ignore", "pipe", "ignore"],
     });
@@ -215,7 +215,7 @@ describe("a real dwio process", () => {
     mkdirSync(cache, { recursive: true });
     writeFileSync(join(cache, "index.html"), "<html></html>");
     const run = join(dir, "run");
-    const child = spawn(process.execPath, [new URL("../src/cli.ts", import.meta.url).pathname, join(dir, "t.drawio"), "--no-open", "--port", "0"], {
+    const child = spawn(process.execPath, [new URL("../src/cli.ts", import.meta.url).pathname, join(dir, "t.drawio"), "--no-open", "--create", "--port", "0"], {
       env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", DWIO_CACHE_DIR: join(dir, "cache"), DWIO_RUN_DIR: run },
       stdio: ["ignore", "pipe", "ignore"],
     });
