@@ -24,6 +24,7 @@
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.3",
     "@types/node": "^22.0.0",
     "typescript": "^5.9.0"
   }

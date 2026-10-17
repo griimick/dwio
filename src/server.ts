@@ -6,11 +6,10 @@ import type { AddressInfo } from "node:net";
 import { isIP } from "node:net";
 import { hostname, networkInterfaces } from "node:os";
 import { basename, dirname, extname, join, normalize, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { hostHtml, hostJs } from "./web-assets.ts";
 import { kindFromPath, normalizeForDisk, toEditorXml, type Kind } from "./format.ts";
 
 const MAX_BODY = 64 * 1024 * 1024;
-const WEB_DIR = fileURLToPath(new URL("./web/", import.meta.url));
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -181,7 +180,9 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
 
     if (req.method === "GET" && (path === "/" || path === "/host.js")) {
       if (!tokenOk(req, url) && path === "/") return json(res, 401, { error: "missing or bad token" });
-      return serveFile(res, WEB_DIR, path === "/" ? "host.html" : "host.js");
+      const [type, body] = path === "/" ? [MIME[".html"]!, hostHtml] : [MIME[".js"]!, hostJs];
+      res.writeHead(200, { "content-type": type, "cache-control": "no-store" });
+      return void res.end(body);
     }
 
     if (path.startsWith("/api/")) {

@@ -1,5 +1,5 @@
 // Browser round-trip check: open a file, add a shape, assert it hit disk, then edit externally and assert reload.
-// Not part of `npm run check` (needs Playwright + a browser):  npx -p playwright node scripts/e2e.mjs
+// Set DWIO_BIN to test a compiled binary. Not part of `npm run check` (needs Playwright + a browser):  npx -p playwright node scripts/e2e.mjs
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -9,7 +9,9 @@ import assert from "node:assert/strict";
 
 const file = join(mkdtempSync(join(tmpdir(), "dwio-e2e-")), "e2e.drawio.svg");
 const cli = new URL("../src/cli.ts", import.meta.url).pathname;
-const proc = spawn("node", [cli, file, "--no-open", "--json"], { stdio: ["ignore", "pipe", "inherit"] });
+// DWIO_BIN=/path/to/dwio-binary to test a standalone build instead of the source.
+const [cmd, args] = process.env.DWIO_BIN ? [process.env.DWIO_BIN, []] : ["node", [cli]];
+const proc = spawn(cmd, [...args, file, "--no-open", "--json"], { stdio: ["ignore", "pipe", "inherit"] });
 const browser = await chromium.launch();
 try {
   const { url } = JSON.parse(await new Promise((r) => proc.stdout.once("data", (d) => r(d.toString()))));

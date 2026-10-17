@@ -7,6 +7,7 @@ import { hostname } from "node:os";
 import { parseArgs } from "node:util";
 import { DRAWIO_VERSION, install, isInstalled, webappDir } from "./assets.ts";
 import { decompressDiagrams, emptyFile, kindFromPath, toEditorXml } from "./format.ts";
+import { VERSION } from "./meta.ts";
 import { atomicWrite, startServer } from "./server.ts";
 
 /** "dwio" on a phone keypad. Stable across runs so bookmarks, tunnels and firewall rules keep working. */
@@ -86,8 +87,7 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
   if (values.version) {
-    const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-    process.stdout.write(`${pkg.version} (draw.io ${DRAWIO_VERSION})\n`);
+    process.stdout.write(`${VERSION} (draw.io ${DRAWIO_VERSION})\n`);
     return 0;
   }
 
