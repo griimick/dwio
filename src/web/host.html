@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>draw.io</title>
+<style>
+  :root { color-scheme: light dark; --bar: #f3f3f3; --fg: #222; --muted: #777; --ok: #1a7f37; --warn: #b35900; --err: #cf222e; }
+  @media (prefers-color-scheme: dark) { :root { --bar: #1e1e1e; --fg: #ddd; --muted: #999; --ok: #3fb950; --warn: #d29922; --err: #f85149; } }
+  html, body { margin: 0; height: 100%; }
+  body { display: flex; flex-direction: column; font: 13px system-ui, sans-serif; background: var(--bar); color: var(--fg); }
+  #bar { display: flex; align-items: center; gap: 12px; padding: 4px 10px; min-height: 26px; }
+  #name { font-weight: 600; }
+  #status { color: var(--muted); }
+  #status[data-state="saved"] { color: var(--ok); }
+  #status[data-state="saving"], #status[data-state="dirty"] { color: var(--warn); }
+  #status[data-state="error"] { color: var(--err); }
+  #actions { margin-left: auto; display: none; gap: 6px; }
+  #actions.show { display: flex; }
+  button { font: inherit; padding: 2px 10px; cursor: pointer; }
+  iframe { flex: 1; border: 0; width: 100%; background: #fff; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <span id="name"></span>
+  <span id="status" data-state="loading">loading…</span>
+  <span id="actions">
+    <button id="reload">Reload from disk</button>
+    <button id="overwrite">Overwrite disk</button>
+  </span>
+</div>
+<iframe id="editor" title="draw.io editor"></iframe>
+<script src="/host.js"></script>
+</body>
+</html>
