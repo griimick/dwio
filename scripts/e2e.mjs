@@ -65,12 +65,62 @@ async function viewStaysPut(kind) {
   }
 }
 
+/** Another program rewrites the file while this tab has nothing unsaved: the editor loads it again, and the view must stay. */
+async function viewSurvivesOutsideChange() {
+  const d = mkdtempSync(join(tmpdir(), "dwio-outside-"));
+  const f = join(d, "o.drawio");
+  const far = (on) => (on ? cell("Z1", "far up-left", -1500, 0).replace('y="40"', 'y="-900"') + cell("Z2", "far down-right", 3000, 0).replace('y="40"', 'y="2200"') : "");
+  writeFileSync(f, mx(cell("A", "A0", 40), cell("B", "B0", 240)));
+  const p = spawn(cmd, [...args, f, "--no-open", "--json", "--port", "0"], { stdio: ["ignore", "pipe", "inherit"] });
+  try {
+    const { url } = JSON.parse(await new Promise((r) => p.stdout.once("data", (x) => r(x.toString()))));
+    const pg = await browser.newPage({ viewport: { width: 1200, height: 700 } });
+    await pg.goto(url);
+    await pg.waitForFunction(() => window.__dwio.last.startsWith("loaded"), null, { timeout: 30000 });
+    const fr = pg.frames().find((x) => x.url().includes("/drawio/"));
+    await fr.locator(".geDiagramContainer svg rect").first().waitFor({ timeout: 30000 });
+    await pg.waitForTimeout(1200);
+    const shape = () => fr.evaluate(() => {
+      const r = [...document.querySelectorAll(".geDiagramContainer svg rect[width]")].find((e) => +e.getAttribute("width") > 20).getBoundingClientRect();
+      return { x: r.x, y: r.y, w: r.width };
+    });
+    for (let i = 0; i < 2; i++) await fr.locator('[title^="Zoom In"]').first().click();
+    await pg.waitForTimeout(500);
+    const p0 = await shape();
+    await fr.evaluate(([dx, dy]) => { const c = document.querySelector(".geDiagramContainer"); c.scrollLeft += dx; c.scrollTop += dy; }, [p0.x - 420, p0.y - 220]);
+    await pg.waitForTimeout(500);
+    const before = await shape();
+    // The outside change edits a label AND adds shapes far away, so the bounds of the diagram change a lot.
+    writeFileSync(f, mx(cell("A", "A0", 40), cell("B", "B-outside", 240)).replace("</root>", far(true) + "</root>"));
+    await pg.waitForFunction(() => window.__dwio.last.startsWith("reloaded"), null, { timeout: 15000 });
+    await pg.waitForTimeout(1500);
+    assert.ok((await fr.locator(".geDiagramContainer").innerText()).includes("B-outside"), "the outside change is shown");
+    const after = await shape();
+    assert.ok(Math.abs(after.x - before.x) < 2 && Math.abs(after.y - before.y) < 2, `a reload from disk moved the view by (${after.x - before.x}, ${after.y - before.y}) px`);
+    assert.ok(Math.abs(after.w - before.w) < 1, `a reload from disk changed the zoom (${before.w} to ${after.w} px wide)`);
+    await pg.close();
+  } finally {
+    p.kill();
+    rmSync(d, { recursive: true, force: true });
+  }
+}
+
 try {
   const { url } = JSON.parse(await new Promise((r) => proc.stdout.once("data", (d) => r(d.toString()))));
   const page = await browser.newPage({ viewport: { width: 1200, height: 700 } });
   const last = (v, timeout = 15000) => page.waitForFunction((x) => window.__dwio.last.startsWith(x), v, { timeout });
   const frame = () => page.frames().find((f) => f.url().includes("/drawio/"));
   const read = () => readFileSync(file, "utf8");
+  // After a reload the page puts the view back a few frames after the editor reports the load. Wait until nothing moves.
+  const settled = async () => {
+    let last = "";
+    for (let i = 0; i < 50; i++) {
+      const now = await frame().evaluate(() => JSON.stringify([...document.querySelectorAll(".geDiagramContainer svg rect[width]")].slice(0, 3).map((e) => e.getBoundingClientRect().x)));
+      if (now === last) return;
+      last = now;
+      await page.waitForTimeout(150);
+    }
+  };
   // What the tab icon shows: the colour of the pixel where the status dot goes, and whether the corner is still transparent.
   const icon = () =>
     page.evaluate(async () => {
@@ -113,6 +163,7 @@ try {
   assert.ok(!(await frame().locator(".geDiagramContainer").innerText()).includes("A-local"), "reset removes the saved local edit");
 
   // 3. Dirty tab: local edit (held back from saving) and an outside edit are merged, then saved.
+  await settled();
   await page.evaluate(() => (window.__dwio.holdSaves = true));
   await page.mouse.dblclick(273 + 60, 109 + 30);
   await page.keyboard.press("Control+A");
@@ -137,6 +188,7 @@ try {
   await page.screenshot({ path: join(dir, "page.png") });
   // Saving must not move the view or wipe the undo history, for both file types.
   for (const kind of ["drawio", "svg"]) await viewStaysPut(kind);
+  await viewSurvivesOutsideChange();
 
   // A short loss of the connection: red dot, and after it comes back the tab recovers by itself.
   // (An open event stream cannot be cut from outside, so this calls the page's own error and open handlers.)

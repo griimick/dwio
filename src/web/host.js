@@ -19,6 +19,47 @@ const EMBED_PARAMS = {
 };
 frame.src = "/drawio/index.html?" + new URLSearchParams(EMBED_PARAMS);
 
+// ---- keeping the view when the file is loaded again --------------------------------------------
+// When another program changes the file, the editor loads it again, and that resets the zoom and the scroll position.
+// The page and the editor share an origin, so the page can reach the editor object: it wraps one method that the editor
+// calls all the time, and keeps the object it is called on. If this ever fails, nothing breaks: the view is just not restored.
+let editorUi = null;
+(function hookEditor() {
+  const started = Date.now();
+  const timer = setInterval(() => {
+    if (Date.now() - started > 60000) return clearInterval(timer);
+    try {
+      const proto = frame.contentWindow?.EditorUi?.prototype;
+      if (!proto) return; // the editor script has not run yet
+      clearInterval(timer);
+      if (proto.__dwioHooked) return;
+      proto.__dwioHooked = true;
+      const original = proto.getCurrentFile;
+      proto.getCurrentFile = function () { editorUi = this; return original.apply(this, arguments); };
+    } catch { /* not reachable: keep trying until the time is up */ }
+  }, 5);
+})();
+
+/** Which part of the diagram is on screen: the zoom, and the diagram point at the top-left corner. */
+function currentView() {
+  try {
+    const g = editorUi.editor.graph, scale = g.view.scale, t = g.view.translate;
+    return { scale, x: g.container.scrollLeft / scale - t.x, y: g.container.scrollTop / scale - t.y };
+  } catch { return null; }
+}
+
+function applyView(v) {
+  try {
+    const g = editorUi.editor.graph;
+    g.view.setScale(v.scale);
+    const t = g.view.translate;
+    // The scroll area changes size after the new scale; set the scroll position when it has.
+    const set = () => { g.container.scrollLeft = (v.x + t.x) * v.scale; g.container.scrollTop = (v.y + t.y) * v.scale; };
+    set();
+    requestAnimationFrame(() => { set(); requestAnimationFrame(set); });
+  } catch { /* leave the view as the editor made it */ }
+}
+
 let name = "";
 let kind = "drawio";
 let baseHash = "";      // hash of the file content we last read or wrote
@@ -115,6 +156,7 @@ async function api(path, init = {}) {
 }
 
 // ---- loading and syncing from disk --------------------------------------------------------------
+let viewToRestore = null;
 async function loadFromDisk(reason) {
   const { res, body } = await api("/api/file");
   if (!res.ok) {
@@ -127,6 +169,7 @@ async function loadFromDisk(reason) {
   baseHash = body.hash;
   latestXml = body.xml;
   dirty = false;
+  viewToRestore = reason === "loaded" ? null : currentView(); // the first load keeps the editor's own view
   post({ action: "load", xml: body.xml, autosave: 1, title: body.name });
   setStatus(`${reason} ${clock()}`, reason === "loaded" ? "loaded" : "reloaded");
 }
@@ -215,6 +258,7 @@ window.addEventListener("message", (e) => {
   try { msg = JSON.parse(e.data); } catch { return; }
   switch (msg.event) {
     case "init": loadFromDisk("loaded"); break;
+    case "load": if (viewToRestore) { applyView(viewToRestore); viewToRestore = null; } break; // the editor finished loading
     case "autosave": latestXml = msg.xml; scheduleSave(); break;
     case "save": latestXml = msg.xml ?? latestXml; dirty = true; startSave(true); break;
     case "export": if (msg.format !== "xml") writeFile(decodeDataUri(msg.data), false); break;
