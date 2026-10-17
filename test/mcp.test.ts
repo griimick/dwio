@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { isInstalled, webappDir } from "../src/assets.ts";
@@ -142,6 +142,53 @@ describe("create_diagram", () => {
     expect(existsSync(join(dir, "sub/new.drawio"))).toBe(true);
     expect(text(await call("get_diagram", { file: "sub/new.drawio" }))).toContain("0 shapes");
     expect(text(await call("create_diagram", { file: "sub/new.drawio" }))).toContain("already exists");
+  });
+});
+
+describe("the agent can only use files inside the allowed folder", () => {
+  // proj = allowed root, outside = a sibling folder with a real diagram in it
+  const top = mkdtempSync(join(tmpdir(), "dwio-root-"));
+  const proj = join(top, "proj");
+  const outside = join(top, "outside");
+  mkdirSync(proj);
+  mkdirSync(outside);
+  writeFileSync(join(outside, "secret.drawio"), XML);
+  writeFileSync(join(proj, "notes.txt"), "not a diagram");
+  symlinkSync(outside, join(proj, "out-link"));
+  symlinkSync(join(outside, "secret.drawio"), join(proj, "file-link.drawio"));
+  symlinkSync(join(proj, "notes.txt"), join(proj, "text-link.drawio"));
+  afterAll(() => rmSync(top, { recursive: true, force: true }));
+  const jailed = createMcp({ version: "0", cwd: proj });
+  const run = async (name: string, args: object) => ((await jailed.handle({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } })) as any).result;
+
+  test("every tool refuses a path outside, with a message that says how to allow it", async () => {
+    for (const [tool, extra] of [["get_diagram", {}], ["render", {}], ["apply_changes", { ops: [{ op: "add_vertex" }] }], ["create_diagram", {}]] as const) {
+      for (const file of ["../outside/secret.drawio", join(outside, "secret.drawio"), "out-link/secret.drawio", "file-link.drawio"]) {
+        const r = await run(tool, { file, ...extra });
+        expect(r.isError).toBe(true);
+        expect(text(r)).toMatch(/outside the folder .*--root/s);
+      }
+    }
+    expect(readFileSync(join(outside, "secret.drawio"), "utf8")).toBe(XML); // untouched
+  });
+  test("create_diagram cannot make files or folders outside, also through a link", async () => {
+    for (const file of ["../escaped.drawio", "out-link/escaped.drawio", "out-link/new-dir/escaped.drawio"]) expect((await run("create_diagram", { file })).isError).toBe(true);
+    expect(existsSync(join(top, "escaped.drawio"))).toBe(false);
+    expect(existsSync(join(outside, "escaped.drawio"))).toBe(false);
+    expect(existsSync(join(outside, "new-dir"))).toBe(false);
+  });
+  test("a link named .drawio that points at a non-diagram file is refused", async () => {
+    expect(text(await run("get_diagram", { file: "text-link.drawio" }))).toContain("link to a file that is not a diagram");
+  });
+  test("files inside still work, including new ones in new folders", async () => {
+    expect(text(await run("create_diagram", { file: "docs/arch.drawio" }))).toContain("Created");
+    expect(text(await run("get_diagram", { file: "docs/arch.drawio" }))).toContain("0 shapes");
+  });
+  test("--root widens access to exactly the folders given", async () => {
+    const wide = createMcp({ version: "0", cwd: proj, roots: [proj, outside] });
+    const r = ((await wide.handle({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "get_diagram", arguments: { file: join(outside, "secret.drawio") } } })) as any).result;
+    expect(r.isError).toBeUndefined();
+    expect(text(r)).toContain("2 shapes");
   });
 });
 

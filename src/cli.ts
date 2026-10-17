@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { isIP } from "node:net";
 import { hostname } from "node:os";
@@ -48,6 +48,7 @@ Options:
   --allow-host <name>      Also accept this hostname in the Host header (repeatable), e.g. a LAN or Tailscale name
   --public-port <n>        Port clients connect to, if it differs from the listening port (SSH -L, Docker)
   --check                  With upgrade: only say if a newer release exists; change nothing
+  --root <folder>          With mcp: the folder the agent may use (default: the current folder). Repeat to allow more
   --keep-alive             Keep running after the browser tab closes
   --no-create              Fail instead of creating a missing file
   --json                   Machine-readable output: one JSON object on stdout (logs stay on stderr)
@@ -93,6 +94,7 @@ async function main(argv: string[]): Promise<number> {
         host: { type: "string" },
         "allow-host": { type: "string", multiple: true },
         "public-port": { type: "string" },
+        root: { type: "string", multiple: true },
         "keep-alive": { type: "boolean" },
         "no-create": { type: "boolean" },
         json: { type: "boolean" },
@@ -137,8 +139,11 @@ async function main(argv: string[]): Promise<number> {
 
   if (first === "mcp") {
     if (rest.length) throw new UsageError(`unexpected extra arguments: ${rest.join(" ")}`);
+    const roots = (values.root ?? []).map((r) => resolve(r));
+    for (const r of roots) if (!existsSync(r) || !statSync(r).isDirectory()) throw new UsageError(`--root ${r} is not a folder`);
     const mcp = createMcp({
       version: VERSION,
+      roots,
       browser: values.browser,
       log: info,
       webapp: async () => {

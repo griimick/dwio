@@ -1,11 +1,12 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { browserHelp, findBrowser } from "./browser.ts";
 import { describe, EditError, parseOps, type CellInfo } from "./diagram.ts";
 import { editDiagramFile, readDiagramFile } from "./diagram-file.ts";
 import { exportDiagram } from "./export.ts";
 import { emptyFile, kindFromPath } from "./format.ts";
+import { resolveInside } from "./safe-path.ts";
 import { atomicWrite } from "./server.ts";
 
 /**
@@ -30,6 +31,8 @@ export interface McpOptions {
   version: string;
   /** Relative file names are resolved against this folder (default: the current folder). */
   cwd?: string;
+  /** The tools may only use files inside these folders (default: just `cwd`). */
+  roots?: string[];
   browser?: string;
   /** Returns the draw.io editor folder, downloading the editor first if needed. Needed to draw pictures. */
   webapp?: () => Promise<string>;
@@ -71,6 +74,7 @@ const OP_SCHEMA = {
 
 export function createMcp(opts: McpOptions) {
   const cwd = opts.cwd ?? process.cwd();
+  const roots = opts.roots?.length ? opts.roots : [cwd];
   const log = opts.log ?? (() => {});
   let renderDir: string | null = null;
   const locks = new Map<string, Promise<unknown>>();
@@ -84,8 +88,9 @@ export function createMcp(opts: McpOptions) {
 
   const fileArg = (args: Json, mustExist = true): string => {
     if (typeof args.file !== "string" || !args.file) throw new Error('"file" is required: the path of a .drawio or .drawio.svg file');
-    const path = resolve(cwd, args.file);
-    if (!/\.(drawio|svg)$/i.test(path)) throw new Error(`"${args.file}" is not a diagram file. Use a .drawio or .drawio.svg file`);
+    if (!/\.(drawio|svg)$/i.test(args.file)) throw new Error(`"${args.file}" is not a diagram file. Use a .drawio or .drawio.svg file`);
+    const path = resolveInside(roots, cwd, args.file); // real path, inside an allowed folder
+    if (!/\.(drawio|svg)$/i.test(path)) throw new Error(`"${args.file}" is a link to a file that is not a diagram`);
     if (mustExist && !existsSync(path)) throw new Error(`${args.file} does not exist. Use create_diagram to make it`);
     return path;
   };
