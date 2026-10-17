@@ -1,6 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { findBrowser, type FinderEnv } from "../src/browser.ts";
@@ -87,6 +87,7 @@ const canRun = browser !== null && isInstalled();
 describe.skipIf(!canRun)("exportDiagram (real browser)", () => {
   const example = new URL("../examples/flow.drawio", import.meta.url).pathname;
   const dir = mkdtempSync(join(tmpdir(), "dwio-export-"));
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
   const run = (out: string, extra = {}) => exportDiagram({ file: example, webapp: webappDir(), out: join(dir, out), ...extra });
 
   test("png has the expected magic bytes and scales with --scale", async () => {

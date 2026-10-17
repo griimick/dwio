@@ -1,6 +1,6 @@
 import { afterAll as after, beforeAll as before, test } from "bun:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, readdirSync } from "node:fs";
 import { request } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -23,7 +23,10 @@ before(async () => {
   srv = await startServer({ file, webapp: join(dir, "app") });
   base = `http://127.0.0.1:${srv.port}`;
 });
-after(() => srv.close());
+after(async () => {
+  await srv.close();
+  rmSync(dir, { recursive: true, force: true });
+});
 
 test("rejects requests without token", async () => {
   assert.equal((await fetch(`${base}/api/file`)).status, 401);

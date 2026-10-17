@@ -3,12 +3,13 @@
 //   bun add -d playwright && bunx playwright install chromium && bun scripts/e2e.mjs
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import assert from "node:assert/strict";
 
-const file = join(mkdtempSync(join(tmpdir(), "dwio-e2e-")), "e2e.drawio.svg");
+const dir = mkdtempSync(join(tmpdir(), "dwio-e2e-"));
+const file = join(dir, "e2e.drawio.svg");
 const cli = new URL("../src/cli.ts", import.meta.url).pathname;
 // DWIO_BIN=/path/to/dwio-binary to test a standalone build instead of the source.
 const [cmd, args] = process.env.DWIO_BIN ? [process.env.DWIO_BIN, []] : [process.execPath, [cli]];
@@ -35,4 +36,5 @@ try {
 } finally {
   await browser.close();
   proc.kill();
+  rmSync(dir, { recursive: true, force: true });
 }
