@@ -76,6 +76,7 @@ A running dwio saves into the file that it has open. Use copies of the example d
 | `src/format.ts` | Reads and writes `.drawio` and `.drawio.svg` files. |
 | `src/export.ts`, `src/cdp.ts`, `src/browser.ts` | `dwio export`. It runs a browser without a screen and reads the picture from the draw.io editor. |
 | `src/xml.ts`, `src/diagram.ts`, `src/diagram-file.ts` | Reads and edits the cells of a diagram (for agents), in `.drawio` and `.drawio.svg` files. It changes only the text that must change. |
+| `src/progress.ts` | The loader that shows download progress in a terminal. `install.sh` has its own copy in shell. |
 | `src/instances.ts` | Instance files: how `dwio mcp` finds the diagram that you have open. The folder must stay private. |
 | `src/safe-path.ts` | Keeps the MCP tools inside the allowed folders. Use it for every path that an agent gives. |
 | `src/style-guide.ts` | The style guide that agents read with `get_style_guide`. Change the lists at the top, and the test draws every style. |

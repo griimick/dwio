@@ -1,4 +1,4 @@
-// Minimal terminal colors, in the style of opencode's installer: dim labels, red errors, one orange accent,
+// Minimal terminal colors: dim labels, red errors, one accent (Catppuccin Mocha green; opencode's installer uses gold),
 // and cyan for links.
 // Colors are used only when the stream is a terminal. NO_COLOR turns them off; FORCE_COLOR turns them on.
 
@@ -23,13 +23,21 @@ export function colorEnabled({ env, isTTY }: ColorEnv): boolean {
 
 const wrap = (on: boolean, code: string) => (s: string): string => (on ? `\x1b[${code}m${s}\x1b[0m` : s);
 
-export function makeStyle(enabled: boolean): Style {
-  return { dim: wrap(enabled, "0;2"), red: wrap(enabled, "0;31"), accent: wrap(enabled, "38;5;214"), link: wrap(enabled, "0;36") };
+/** Catppuccin Mocha "Green" is #a6e3a1. Terminals without true color get the nearest color of the 256-color palette. */
+export const ACCENT_TRUECOLOR = "38;2;166;227;161";
+export const ACCENT_256 = "38;5;151";
+
+export function hasTrueColor(env: Record<string, string | undefined> = process.env): boolean {
+  return /truecolor|24bit/i.test(env.COLORTERM ?? "");
+}
+
+export function makeStyle(enabled: boolean, truecolor = false): Style {
+  return { dim: wrap(enabled, "0;2"), red: wrap(enabled, "0;31"), accent: wrap(enabled, truecolor ? ACCENT_TRUECOLOR : ACCENT_256), link: wrap(enabled, "0;36") };
 }
 
 /** Style for one output stream (stdout and stderr are decided separately, so a pipe on one does not affect the other). */
 export function styleFor(stream: { isTTY?: boolean }, env: Record<string, string | undefined> = process.env): Style {
-  return makeStyle(colorEnabled({ env, isTTY: !!stream.isTTY }));
+  return makeStyle(colorEnabled({ env, isTTY: !!stream.isTTY }), hasTrueColor(env));
 }
 
 /** Colors the section headings of the help text (lines such as "Usage:" or "Export options (dwio export):"). */

@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DRAWIO_VERSION } from "../src/assets.ts";
-import { colorEnabled, colorHelp, makeStyle } from "../src/color.ts";
+import { colorEnabled, colorHelp, hasTrueColor, makeStyle } from "../src/color.ts";
 
 describe("colorEnabled", () => {
   test("terminal on, pipe off", () => {
@@ -21,6 +21,10 @@ describe("colorEnabled", () => {
   });
 });
 
+test("true color is used only when the terminal says it has it", () => {
+  expect([hasTrueColor({ COLORTERM: "truecolor" }), hasTrueColor({ COLORTERM: "24bit" }), hasTrueColor({ COLORTERM: "" }), hasTrueColor({})]).toEqual([true, true, false, false]);
+});
+
 describe("makeStyle", () => {
   test("disabled returns the text unchanged", () => {
     const s = makeStyle(false);
@@ -30,15 +34,16 @@ describe("makeStyle", () => {
     const s = makeStyle(true);
     expect(s.red("x")).toBe("\x1b[0;31mx\x1b[0m");
     expect(s.dim("x")).toBe("\x1b[0;2mx\x1b[0m");
-    expect(s.accent("x")).toBe("\x1b[38;5;214mx\x1b[0m");
+    expect(s.accent("x")).toBe("\x1b[38;5;151mx\x1b[0m"); // 256-color shade of the accent
+    expect(makeStyle(true, true).accent("x")).toBe("\x1b[38;2;166;227;161mx\x1b[0m"); // Catppuccin Mocha green, #a6e3a1
     expect(s.link("x")).toBe("\x1b[0;36mx\x1b[0m");
   });
 });
 
 test("colorHelp colors headings only", () => {
   const out = colorHelp("Usage:\n  dwio <file>   does a thing\nOptions:\n", makeStyle(true));
-  expect(out).toContain("\x1b[38;5;214mUsage:\x1b[0m");
-  expect(out).toContain("\x1b[38;5;214mOptions:\x1b[0m");
+  expect(out).toContain("\x1b[38;5;151mUsage:\x1b[0m");
+  expect(out).toContain("\x1b[38;5;151mOptions:\x1b[0m");
   expect(out).toContain("\n  dwio <file>   does a thing\n");
 });
 
