@@ -1,12 +1,13 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { browserHelp, findBrowser } from "./browser.ts";
 import { describe, EditError, parseOps, type CellInfo } from "./diagram.ts";
 import { editDiagramFile, readDiagramFile } from "./diagram-file.ts";
 import { exportDiagram } from "./export.ts";
 import { emptyFile, kindFromPath } from "./format.ts";
-import { resolveInside } from "./safe-path.ts";
+import { listInstances, type Instance } from "./instances.ts";
+import { isInside, realpathLoose, resolveInside } from "./safe-path.ts";
 import { atomicWrite } from "./server.ts";
 
 /**
@@ -33,6 +34,8 @@ export interface McpOptions {
   cwd?: string;
   /** The tools may only use files inside these folders (default: just `cwd`). */
   roots?: string[];
+  /** Which diagrams are open in a running dwio editor. Default: read the instance files. */
+  openDiagrams?: () => Promise<Instance[]>;
   browser?: string;
   /** Returns the draw.io editor folder, downloading the editor first if needed. Needed to draw pictures. */
   webapp?: () => Promise<string>;
@@ -42,6 +45,7 @@ export interface McpOptions {
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
 const INSTRUCTIONS = `Read and edit draw.io diagram files (.drawio and .drawio.svg) in this project.
+If the user says "this diagram" or names no file, call list_open_diagrams: it shows the diagram they have open in the editor.
 Workflow: get_diagram to see the cells and their ids; apply_changes to add, update or delete cells; render to look at the result.
 Check the picture after a change. If a person has the diagram open in the dwio editor, they see your edits within a second.
 Labels are plain text (use \\n for a line break). Coordinates are in pixels; y grows downward. Connect shapes with add_edge using their ids.
@@ -86,24 +90,57 @@ export function createMcp(opts: McpOptions) {
     return run;
   };
 
-  const fileArg = (args: Json, mustExist = true): string => {
-    if (typeof args.file !== "string" || !args.file) throw new Error('"file" is required: the path of a .drawio or .drawio.svg file');
+  const listOpen = opts.openDiagrams ?? (() => listInstances());
+
+  /** Diagrams open in an editor that are inside the allowed folders, and how many are open elsewhere. */
+  const openInside = async (): Promise<{ inside: Instance[]; outside: number }> => {
+    const all = await listOpen().catch(() => [] as Instance[]);
+    const inside = all.filter((i) => roots.some((r) => isInside(realpathLoose(r), i.file)));
+    return { inside, outside: all.length - inside.length };
+  };
+  const shown = (path: string): string => {
+    const rel = relative(cwd, path);
+    return rel && !rel.startsWith("..") ? rel : path;
+  };
+
+  /** The real, allowed path for a tool call. Without "file", the diagram open in the editor is used if there is exactly one. */
+  const fileArg = async (args: Json, mustExist = true, allowOpen = true): Promise<{ path: string; note?: string }> => {
+    if (args.file === undefined || args.file === "") {
+      if (!allowOpen) throw new Error('"file" is required: the path of a .drawio or .drawio.svg file');
+      const { inside } = await openInside();
+      if (inside.length === 1) return { path: inside[0]!.file, note: `Using the diagram that is open in the editor: ${shown(inside[0]!.file)}` };
+      throw new Error(inside.length === 0 ? 'No "file" was given, and no diagram is open in the dwio editor inside the allowed folder. Give the path of a diagram file.' : `No "file" was given, and ${inside.length} diagrams are open: ${inside.map((i) => shown(i.file)).join(", ")}. Say which one.`);
+    }
+    if (typeof args.file !== "string") throw new Error('"file" must be the path of a .drawio or .drawio.svg file');
     if (!/\.(drawio|svg)$/i.test(args.file)) throw new Error(`"${args.file}" is not a diagram file. Use a .drawio or .drawio.svg file`);
     const path = resolveInside(roots, cwd, args.file); // real path, inside an allowed folder
     if (!/\.(drawio|svg)$/i.test(path)) throw new Error(`"${args.file}" is a link to a file that is not a diagram`);
     if (mustExist && !existsSync(path)) throw new Error(`${args.file} does not exist. Use create_diagram to make it`);
-    return path;
+    return { path };
   };
+  const withNote = (r: ToolResult, note?: string): ToolResult => (note ? { ...r, content: [{ type: "text", text: note }, ...r.content] } : r);
 
-  const fileProp = { type: "string", description: "Path of the diagram file (.drawio or .drawio.svg), absolute or relative to the project folder." };
+  const fileProp = { type: "string", description: "Path of the diagram file (.drawio or .drawio.svg), absolute or relative to the project folder. You may leave it out if the user has exactly one diagram open in the dwio editor." };
 
   const tools: Tool[] = [
     {
+      name: "list_open_diagrams",
+      description: "List the diagrams that the user has open in the dwio editor right now (only those inside the allowed folder). Use it when the user says \"this diagram\" or does not name a file.",
+      inputSchema: { type: "object", properties: {} },
+      async run() {
+        const { inside, outside } = await openInside();
+        const lines = inside.map((i) => `${shown(i.file)} (open since ${i.startedAt.slice(11, 19) || "?"} UTC)`);
+        if (!lines.length) lines.push("No diagram is open in the dwio editor.");
+        if (outside) lines.push(`${outside} more diagram${outside === 1 ? " is" : "s are"} open outside the allowed folder, so you cannot use ${outside === 1 ? "it" : "them"}.`);
+        return textResult(lines.join("\n"));
+      },
+    },
+    {
       name: "get_diagram",
       description: "Read a diagram: its pages and cells. Each cell has an id, type (vertex = shape, edge = connector), plain-text label, style, position and size (x, y, width, height; absX/absY are page coordinates), and for edges the source and target ids. Use the ids in apply_changes.",
-      inputSchema: { type: "object", properties: { file: fileProp, page: { type: ["string", "number"], description: "Only this page (name, id or number)." } }, required: ["file"] },
+      inputSchema: { type: "object", properties: { file: fileProp, page: { type: ["string", "number"], description: "Only this page (name, id or number)." } } },
       async run(args) {
-        const path = fileArg(args);
+        const { path, note } = await fileArg(args);
         const { kind, pages } = readDiagramFile(path);
         const want = args.page === undefined ? null : String(args.page);
         const shown = want === null ? pages : pages.filter((p) => p.name === want || p.id === want || String(p.index) === want);
@@ -115,7 +152,7 @@ export function createMcp(opts: McpOptions) {
           const e = p.cells.filter((c) => c.type === "edge").length;
           out.push("", `page ${p.index} "${p.name}": ${v} shapes, ${e} connectors`, ...p.cells.map(clean));
         }
-        return textResult(out.join("\n"));
+        return withNote(textResult(out.join("\n")), note);
       },
     },
     {
@@ -128,10 +165,9 @@ export function createMcp(opts: McpOptions) {
           page: { type: ["string", "number"], description: "Page name, id or number. Default: the first page." },
           scale: { type: "number", description: "Zoom factor. Default 1. Use 2 for small text." },
         },
-        required: ["file"],
       },
       async run(args) {
-        const path = fileArg(args);
+        const { path, note } = await fileArg(args);
         const { path: browser } = findBrowser(opts.browser);
         if (!browser) return errorResult(browserHelp(findBrowser(opts.browser).tried));
         if (!opts.webapp) return errorResult("the draw.io editor is not available");
@@ -143,15 +179,15 @@ export function createMcp(opts: McpOptions) {
           scale: typeof args.scale === "number" ? args.scale : 1, border: 20, browser: opts.browser, log: (m) => notes.push(m),
         });
         const info = `Rendered page ${r!.page.index} "${r!.page.name}" of ${basename(path)}: ${r!.width}x${r!.height} px. Saved to ${out}.${notes.length ? " " + notes.join(" ") : ""}`;
-        return { content: [{ type: "text", text: info }, { type: "image", data: readFileSync(out).toString("base64"), mimeType: "image/png" }] };
+        return withNote({ content: [{ type: "text", text: info }, { type: "image", data: readFileSync(out).toString("base64"), mimeType: "image/png" }] }, note);
       },
     },
     {
       name: "apply_changes",
       description: "Change a diagram with a list of operations: add shapes (add_vertex), connect them (add_edge), change a cell (update: label, style, position, size, parent, source, target) or remove one (delete). Operations run in order and either all succeed or none are applied. Returns the ids that were added or changed. The file is edited in place, with minimal changes to the text. For a .drawio.svg file the picture is redrawn too.",
-      inputSchema: { type: "object", properties: { file: fileProp, ops: { type: "array", items: OP_SCHEMA, description: "The operations, in order." } }, required: ["file", "ops"] },
+      inputSchema: { type: "object", properties: { file: fileProp, ops: { type: "array", items: OP_SCHEMA, description: "The operations, in order." } }, required: ["ops"] },
       async run(args) {
-        const path = fileArg(args);
+        const { path, note } = await fileArg(args);
         const ops = parseOps(args.ops);
         return withLock(path, async () => {
           let webapp: string | undefined;
@@ -166,7 +202,7 @@ export function createMcp(opts: McpOptions) {
           const r = await editDiagramFile(path, ops, { webapp, browser: opts.browser, log });
           const lines = r.changes.map((c) => `${c.action} ${c.id} (page ${c.page})`);
           const warning = r.warning ?? warn;
-          return textResult([...lines, ...(r.rendered ? ["The picture was redrawn."] : []), ...(warning ? [`Warning: ${warning}`] : [])].join("\n"));
+          return withNote(textResult([...lines, ...(r.rendered ? ["The picture was redrawn."] : []), ...(warning ? [`Warning: ${warning}`] : [])].join("\n")), note);
         });
       },
     },
@@ -175,7 +211,7 @@ export function createMcp(opts: McpOptions) {
       description: "Create a new, empty diagram file (.drawio or .drawio.svg). It fails if the file exists. Then use apply_changes to draw in it.",
       inputSchema: { type: "object", properties: { file: fileProp }, required: ["file"] },
       async run(args) {
-        const path = fileArg(args, false);
+        const { path } = await fileArg(args, false, false);
         if (existsSync(path)) throw new Error(`${args.file} already exists`);
         mkdirSync(dirname(path), { recursive: true });
         await atomicWrite(path, emptyFile(kindFromPath(path)));

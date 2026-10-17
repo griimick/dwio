@@ -5,6 +5,7 @@ import { createServer as createHttpServer, type IncomingMessage, type Server, ty
 import type { AddressInfo } from "node:net";
 import { isIP } from "node:net";
 import { hostname, networkInterfaces } from "node:os";
+import { isLoopback, newAgentToken, proof } from "./instances.ts";
 import { basename, dirname, extname, join, normalize, sep } from "node:path";
 import { exportHtml, exportJs, hostHtml, hostJs } from "./web-assets.ts";
 import { kindFromPath, normalizeForDisk, toEditorXml, type Kind } from "./format.ts";
@@ -55,9 +56,15 @@ export interface ServerOptions {
   /** Called once every browser tab has been gone for `graceMs`. */
   onIdle?: () => void;
   graceMs?: number;
+  /** Secret for the agent routes (see instances.ts). Made at random if not given. */
+  agentToken?: string;
 }
 
 export interface RunningServer {
+  /** Secret that proves this server is the one an instance file describes. */
+  agentToken: string;
+  /** Real path of the diagram file. */
+  file: string;
   url: string;
   /** Every address the server is reachable on (just loopback unless --host is used). */
   urls: string[];
@@ -90,6 +97,8 @@ export async function atomicWrite(path: string, content: string): Promise<void> 
 
 export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   const token = opts.token ?? randomBytes(16).toString("hex");
+  const agentToken = opts.agentToken ?? newAgentToken();
+  const realFile = realpathSync(opts.file);
   const bindHost = opts.host ?? "127.0.0.1";
   const graceMs = opts.graceMs ?? 5000;
   const kind: Kind = kindFromPath(opts.file);
@@ -186,6 +195,17 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
 
     if (path.startsWith("/drawio/")) return serveFile(res, opts.webapp, decodeURIComponent(path.slice("/drawio/".length)));
 
+    // Routes for local agents (dwio mcp). Loopback connections only, even when the server listens on the network.
+    if (path.startsWith("/api/agent/")) {
+      if (!isLoopback(req.socket.remoteAddress)) return json(res, 403, { error: "agent routes are for this computer only" });
+      if (req.method === "GET" && path === "/api/agent/ping") {
+        const nonce = url.searchParams.get("n") ?? "";
+        if (nonce.length < 8 || nonce.length > 128) return json(res, 400, { error: "missing challenge" });
+        return json(res, 200, { proof: proof(agentToken, nonce, process.pid, realFile) });
+      }
+      return json(res, 404, { error: "not found" });
+    }
+
     const page = PAGES[path];
     if (req.method === "GET" && page) {
       if (page.needsToken && !tokenOk(req, url)) return json(res, 401, { error: "missing or bad token" });
@@ -275,6 +295,8 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   port = (server.address() as AddressInfo).port;
 
   return {
+    agentToken,
+    file: realFile,
     port,
     token,
     url: `http://127.0.0.1:${port}/?t=${token}`,

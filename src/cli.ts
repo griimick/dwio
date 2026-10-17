@@ -11,6 +11,7 @@ import { colorHelp, styleFor } from "./color.ts";
 import { VERSION } from "./meta.ts";
 import { upgrade } from "./upgrade.ts";
 import { exportDiagram, parseFormat } from "./export.ts";
+import { registerInstance } from "./instances.ts";
 import { createMcp, serveStdio } from "./mcp.ts";
 import { atomicWrite, startServer } from "./server.ts";
 
@@ -278,8 +279,17 @@ async function main(argv: string[]): Promise<number> {
   }
   if (!values["no-open"]) openBrowser(server.url);
 
+  // Tell local agents (dwio mcp) which diagram is open. Not fatal if it fails.
+  let unregister = (): void => {};
+  try {
+    unregister = registerInstance({ pid: process.pid, file: server.file, port: server.port, agentToken: server.agentToken });
+  } catch (e) {
+    info(`Agents will not see this diagram as open: ${(e as Error).message}`);
+  }
+
   for (const sig of ["SIGINT", "SIGTERM"] as const) process.once(sig, stop);
   await done;
+  unregister();
   await server.close();
   return 0;
 }
