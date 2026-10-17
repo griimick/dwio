@@ -15,6 +15,8 @@ import { registerInstance } from "./instances.ts";
 import { createMcp, serveStdio } from "./mcp.ts";
 import { createProgress } from "./progress.ts";
 import { atomicWrite, startServer } from "./server.ts";
+import { stableEndpoint } from "./stable.ts";
+import { realpathSync } from "node:fs";
 
 /** "dwio" on a phone keypad. Stable across runs so bookmarks, tunnels and firewall rules keep working. */
 const DEFAULT_PORT = 3946;
@@ -51,6 +53,7 @@ Options:
   --public-port <n>        Port clients connect to, if it differs from the listening port (SSH -L, Docker)
   --check                  With upgrade: only say if a newer release exists; change nothing
   --root <folder>          With mcp: the folder the agent may use (default: the current folder). Repeat to allow more
+  --new-token              Renew the secret behind the URL token (the token and port are otherwise the same on every run for a file)
   --keep-alive             Keep running after the browser tab closes
   --no-create              Fail instead of creating a missing file
   --json                   Machine-readable output: one JSON object on stdout (logs stay on stderr)
@@ -102,6 +105,7 @@ async function main(argv: string[]): Promise<number> {
         "keep-alive": { type: "boolean" },
         "no-create": { type: "boolean" },
         json: { type: "boolean" },
+        "new-token": { type: "boolean" },
         check: { type: "boolean" },
         output: { type: "string", short: "o" },
         format: { type: "string" },
@@ -228,7 +232,7 @@ async function main(argv: string[]): Promise<number> {
   const base = requested === undefined ? DEFAULT_PORT : Number(requested);
   if (!Number.isInteger(base) || base < 0 || base > 65535) throw new UsageError(`invalid port: ${requested}`);
   // An explicit --port (or 0 = any) is honoured exactly; only the built-in default is allowed to slide upward.
-  const candidates = requested === undefined ? Array.from({ length: PORT_SPAN + 1 }, (_, i) => DEFAULT_PORT + i) : [base];
+  const slide = Array.from({ length: PORT_SPAN + 1 }, (_, i) => DEFAULT_PORT + i);
 
   const publicPort = values["public-port"] === undefined ? undefined : Number(values["public-port"]);
   if (publicPort !== undefined && (!Number.isInteger(publicPort) || publicPort < 1 || publicPort > 65535)) throw new UsageError(`invalid --public-port: ${values["public-port"]}`);
@@ -241,6 +245,10 @@ async function main(argv: string[]): Promise<number> {
   }
 
   if (!isInstalled(version)) await install(version, info, loader);
+
+  // Same token and (if free) same port as last time, so a tab left open across a restart reconnects by itself.
+  const stable = stableEndpoint(realpathSync(file), { renew: values["new-token"] });
+  const candidates = requested === undefined ? [...new Set(stable?.port ? [stable.port, ...slide] : slide)] : [base];
 
   let stop: () => void = () => {};
   const done = new Promise<void>((res) => (stop = res));
@@ -258,7 +266,7 @@ async function main(argv: string[]): Promise<number> {
   let server;
   for (const [i, port] of candidates.entries()) {
     try {
-      server = await startServer({ ...serverOpts, port });
+      server = await startServer({ ...serverOpts, port, token: stable?.token });
       break;
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== "EADDRINUSE") throw e;
@@ -268,7 +276,8 @@ async function main(argv: string[]): Promise<number> {
     }
   }
   if (!server) throw new Error("could not start server");
-  if (requested === undefined && server.port !== DEFAULT_PORT) info(`Port ${DEFAULT_PORT} is busy; using ${server.port}.`);
+  if (requested === undefined) stable?.remember(server.port);
+  if (requested === undefined && server.port !== DEFAULT_PORT && server.port !== stable?.port) info(`Port ${DEFAULT_PORT} is busy; using ${server.port}.`);
 
   process.stdout.write(values.json ? JSON.stringify({ url: server.url, urls: server.urls, port: server.port, file, kind, pid: process.pid }) + "\n" : out.link(server.url) + "\n");
   log(`${err.dim("Editing")} ${file} ${err.dim(`(${kind}). Ctrl+C to stop.`)}`);

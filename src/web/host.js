@@ -70,6 +70,17 @@ let saveAgain = false;
 let externalPending = false;
 let timer;
 
+// ---- a copy of unsaved edits ----------------------------------------------------------------------
+// If dwio is stopped (or the token or port changes) while edits are unsaved, the tab cannot save them. The editor's
+// xml is kept in localStorage until it is on disk, and offered back on the next load of this address. It can fail
+// (private window, blocked storage); then there is simply no copy.
+const DRAFT_KEY = "dwio-draft";
+const draft = {
+  save() { try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ xml: latestXml, at: Date.now() })); } catch { /* no copy */ } },
+  clear() { try { localStorage.removeItem(DRAFT_KEY); } catch { /* nothing to clear */ } },
+  read() { try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "null"); return d && typeof d.xml === "string" ? d : null; } catch { return null; } },
+};
+
 // Read-only view of the state for the browser test (scripts/e2e.mjs). `holdSaves` pauses autosave.
 window.__dwio = { get dirty() { return dirty; }, get saving() { return saving; }, last: "", holdSaves: false, dot: "" };
 
@@ -172,6 +183,19 @@ async function loadFromDisk(reason) {
   viewToRestore = reason === "loaded" ? null : currentView(); // the first load keeps the editor's own view
   post({ action: "load", xml: body.xml, autosave: 1, title: body.name });
   setStatus(`${reason} ${clock()}`, reason === "loaded" ? "loaded" : "reloaded");
+  if (reason === "loaded") offerDraft(body.xml);
+}
+
+// A copy left by an earlier tab that could not save: ask before using it, because the file on disk may have moved on.
+function offerDraft(diskXml) {
+  const d = draft.read();
+  if (!d) return;
+  if (d.xml === diskXml) return draft.clear();
+  toast({ id: "draft", sticky: true, text: `Found unsaved edits from ${new Date(d.at).toLocaleString()} that never reached the file. Restoring replaces what is on disk now.`,
+    actions: [
+      { label: "Restore my edits", run: () => { latestXml = d.xml; post({ action: "load", xml: d.xml, autosave: 1, title: name }); scheduleSave(); } },
+      { label: "Discard", run: draft.clear },
+    ] });
 }
 
 const mergeWaiters = [];
@@ -207,6 +231,7 @@ async function onExternalChange() {
 // ---- saving -------------------------------------------------------------------------------------
 function scheduleSave() {
   dirty = true;
+  if (latestXml) draft.save();
   setStatus("unsaved changes", "dirty");
   clearTimeout(timer);
   timer = setTimeout(() => { timer = undefined; startSave(); }, 400);
@@ -244,6 +269,7 @@ async function writeFile(text, force) {
   } else {
     baseHash = body.hash;
     dirty = !!timer; // edits made while the save ran are still pending
+    if (!dirty && !saveAgain) draft.clear();
     toasts.get("save")?.();
     setStatus(`saved ${clock()}`, "saved");
     if (externalPending) { externalPending = false; await onExternalChange(); }
