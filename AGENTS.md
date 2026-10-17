@@ -16,6 +16,7 @@ webapp is downloaded once into `~/.cache/dwio` and served offline afterwards.
 | Run from source | `bun src/cli.ts <file> --no-open` |
 | Standalone binary, this platform / all five | `bun run build` / `bun run build:all` → `dist-bin/` |
 | Browser round-trip test (opt-in) | see the header of `scripts/e2e.mjs`; set `DWIO_BIN=dist-bin/dwio-linux-x64` to test a compiled binary |
+| npm bundle (`npx dwio`), a Node-compatible single file | `bun run build:npm` → `dist/cli.js` (test with `node dist/cli.js …`) |
 | Fetch the draw.io webapp | `bun src/cli.ts setup` |
 
 Tooling is Bun only (>= 1.2): no Node or npm needed to develop, test or release. Tests use `bun:test`. No runtime dependencies — keep it that way.
@@ -24,7 +25,7 @@ Tooling is Bun only (>= 1.2): no Node or npm needed to develop, test or release.
 - `src/cli.ts` – default port 3946 (slides up to +20 if busy; explicit `--port` never slides), arg parsing, command dispatch, browser launch. Stdout carries only the URL/JSON; logs go to stderr.
 - `src/server.ts` – HTTP server: static draw.io, `/api/file` (GET/PUT), `/api/events` (SSE), dir watcher, atomic writes.
 - `src/format.ts` – pure functions for `.drawio` / `.drawio.svg` (extract/escape `content` attr, inflate compressed pages).
-- `src/web-assets.ts`, `src/meta.ts` – web page + version as plain modules; `scripts/build-binaries.ts` swaps them for inlined constants when compiling with Bun. Anything that reads files relative to `import.meta.url` must go through such a module or it will break in the binary.
+- `src/web-assets.ts`, `src/meta.ts` – web page + version as plain modules; `scripts/inline-plugin.ts` (used by `build-binaries.ts` and `build-npm.ts`) swaps them for inlined constants when compiling with Bun. Anything that reads files relative to `import.meta.url` must go through such a module or it will break in the binary.
 - `src/assets.ts` – one-time download/cache of the pinned draw.io release (`DRAWIO_VERSION`).
 - `src/web/host.{html,js}` – page that hosts the draw.io iframe and bridges its postMessage JSON protocol to the API. Plain JS, no build step.
 - `test/` – `bun:test` suites. `format` is pure; `server` is an integration test with a fake webapp dir.

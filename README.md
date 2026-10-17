@@ -32,6 +32,16 @@ The script does these steps:
 
 Make sure `~/.local/bin` is in your `PATH`.
 
+### Run without installing
+
+If you have Node.js 18.3 or newer, you can run dwio with `npx`. You do not install anything.
+
+```sh
+npx dwio diagram.drawio.svg
+pnpm dlx dwio diagram.drawio.svg
+bunx dwio diagram.drawio.svg
+```
+
 To install in a different folder, set `DWIO_INSTALL_DIR`. To install a specific version, set `DWIO_VERSION`, for example `DWIO_VERSION=v0.1.0`.
 
 On Windows, download `dwio-windows-x64.exe` from the [Releases page](https://github.com/griimick/dwio/releases).
@@ -139,6 +149,16 @@ Commit messages must follow [Conventional Commits](https://www.conventionalcommi
 2. Run `git tag vX.Y.Z` and then `git push origin vX.Y.Z`.
 
 The `release` workflow checks that the tag matches `package.json`. It runs the tests, builds the program files for all five systems, and publishes them with a `SHA256SUMS` file on the Releases page.
+
+### Publish to npm
+
+Do these steps one time:
+
+1. Log in with `npm login`. Run `npm publish --access public` in the project folder. This makes the package `dwio` on npm.
+2. On npmjs.com, open the package settings. Under **Trusted publisher**, add GitHub Actions with owner `griimick`, repository `dwio`, and workflow `release.yml`.
+3. On GitHub, open **Settings**, **Secrets and variables**, **Actions**, **Variables**. Add the variable `NPM_PUBLISH` with the value `true`.
+
+After this, each release tag also publishes the package to npm. The package has a provenance mark. The `npm` job in `release.yml` does the work.
 
 ## Disclaimer about AI-generated content
 

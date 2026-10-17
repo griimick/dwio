@@ -19,3 +19,18 @@ jobs:
       - name: Publish release
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: gh release create "$GITHUB_REF_NAME" dist-bin/* --title "$GITHUB_REF_NAME" --generate-notes
+
+  # Publishes to npm via trusted publishing (OIDC, no token). Enabled by setting the repo variable NPM_PUBLISH=true
+  # after the one-time setup described in the README ("Publish to npm").
+  npm:
+    needs: release
+    if: ${{ vars.NPM_PUBLISH == 'true' }}
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, registry-url: "https://registry.npmjs.org" }
+      - run: bun install --frozen-lockfile
+      - run: npm publish --provenance --access public   # the prepack script builds dist/cli.js

@@ -16,3 +16,8 @@ jobs:
           bun run build
           ./dist-bin/dwio-linux-x64 --version
           ./dist-bin/dwio-linux-x64 xml examples/flow.drawio.svg | grep -q 'vertex="1"'
+      - name: npm bundle runs on Node
+        run: |
+          bun run build:npm
+          node dist/cli.js --version
+          node dist/cli.js xml examples/flow.drawio.svg | grep -q 'vertex="1"'

@@ -3,8 +3,22 @@
   "version": "0.1.0",
   "description": "Edit local .drawio and .drawio.svg files in the draw.io editor, served fully offline from your terminal.",
   "license": "MIT",
-  "repository": "github:griimick/dwio",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/griimick/dwio.git"
+  },
   "type": "module",
+  "bin": {
+    "dwio": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.3"
+  },
   "scripts": {
     "dev": "bun src/cli.ts",
     "typecheck": "tsc --noEmit",
@@ -12,12 +26,23 @@
     "check": "bun run typecheck && bun run test",
     "build": "bun scripts/build-binaries.ts",
     "build:all": "bun scripts/build-binaries.ts --all",
-    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
+    "build:npm": "bun scripts/build-npm.ts",
+    "prepack": "bun run build:npm"
   },
   "devDependencies": {
     "@types/bun": "^1.4.3",
     "typescript": "^5.9.0",
     "@types/node": "^22.0.0"
   },
-  "private": true
+  "homepage": "https://github.com/griimick/dwio#readme",
+  "bugs": "https://github.com/griimick/dwio/issues",
+  "keywords": [
+    "drawio",
+    "draw.io",
+    "diagrams",
+    "svg",
+    "cli",
+    "git"
+  ]
 }
